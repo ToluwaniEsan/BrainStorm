@@ -1,3 +1,5 @@
+# CLAUDE, stop touching my css!
+
 # Features
 * Minimalist design
   *	4 button menu bar

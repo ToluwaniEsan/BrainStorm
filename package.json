@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:gemini": "node --env-file-if-exists=.env.local scripts/check-gemini.mjs"
+    "check:gemini": "node --env-file-if-exists=.env.local scripts/check-gemini.mjs",
+    "check:db": "node --env-file-if-exists=.env.local scripts/check-db.mjs",
+    "check:storage": "node --env-file-if-exists=.env.local scripts/check-storage.mjs",
+    "check:exa": "node --env-file-if-exists=.env.local scripts/check-exa.mjs",
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.31.1",
@@ -15,7 +19,7 @@
     "dotenv": "^18.0.7",
     "drizzle-orm": "^0.45.4",
     "next": "16.4.0",
-    "pg": "^8.23.1",
+    "postgres": "^3.4.9",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1"

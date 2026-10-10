@@ -62,7 +62,23 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 1. `npm install`
 2. Copy `.env.example` to `.env.local` and fill in the values. `.env.local` is git-ignored, so keys never reach the repo.
-3. `npm run check:gemini` confirms the Gemini key and model id work.
+   For Supabase, follow [db/README.md](db/README.md): it runs `npm run db:migrate` and sets up the app's database role.
+3. Run the checks for the keys you've filled in:
+   - `npm run check:gemini` confirms the Gemini key and model id.
+   - `npm run check:db` confirms both Supabase Postgres connection strings (and that pgvector is available).
+   - `npm run check:storage` confirms the Supabase secret key and that the private uploads bucket exists.
+   - `npm run check:exa` confirms the Exa key with one small search.
 4. `npm run dev`
 
-Gemini code lives in `src/lib/gemini.ts`. It is server-only, so the API key can't end up in the browser bundle.
+On Vercel, add the same variables under Project → Settings → Environment Variables and mark the keys Sensitive. `DIRECT_DATABASE_URL` is only needed where migrations run.
+
+All service code lives in `src/lib` and is server-only (`import "server-only"`), so keys can't end up in the browser bundle:
+
+| File | Service | Env vars |
+| --- | --- | --- |
+| `gemini.ts` | Gemini | `GEMINI_API_KEY`, `GEMINI_*_MODEL` |
+| `db.ts` | Supabase Postgres through Drizzle, one schema per user with RLS | `DATABASE_URL` (app), `DIRECT_DATABASE_URL` (migrations) |
+| `supabase-storage.ts` | Supabase Storage (uploaded files) | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` |
+| `exa.ts` | Exa search and page contents | `EXA_API_KEY` |
+
+Drizzle has no API key of its own; it uses the Supabase Postgres connection string. We don't use supabase-js or Supabase Auth (Auth0 handles sign-in).

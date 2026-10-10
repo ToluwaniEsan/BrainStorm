@@ -31,10 +31,10 @@
 }
 
 main {
-  background: linear-gradient(-45deg, #c08dc9, #bb42d9, #582a85, #8563d6);
+  background: linear-gradient(-45deg, blue, orange, purple, indigo, magenta, teal, lightblue, yellow, darkred);
   background-size: 400% 400%;
-  animation: gradientMovement 10s ease infinite;
+  animation: gradientMovement 25s linear infinite;
 
-  color: var(--foreground);
+  color: rgb(191, 18, 18);
   font-family: Arial, Helvetica, sans-serif;
 }

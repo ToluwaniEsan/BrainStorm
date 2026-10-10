@@ -54,13 +54,12 @@ async function Home() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8 text-foreground">
         <h1 className="text-4xl font-semibold">Clutter</h1>
-        <p>Sign in to continue.</p>
+        <p>Your creative helper</p>
         <a className="rounded-md bg-foreground px-5 py-3 text-background" href="/auth/login">
           Log in
         </a>
         <p className="max-w-md text-center text-sm text-zinc-500">
-          Log in sends you to Auth0 (/auth/login). Auth0 returns you to /auth/callback, which sets
-          your session cookie and brings you back here.
+          Sign in to continue.
         </p>
       </main>
     );

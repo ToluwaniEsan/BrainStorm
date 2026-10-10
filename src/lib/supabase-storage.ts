@@ -12,7 +12,9 @@ export function storageFetch(path: string, init: RequestInit = {}): Promise<Resp
   headers.set("apikey", key);
   // Legacy service_role keys are JWTs and also need the Authorization header.
   if (key.startsWith("eyJ")) headers.set("Authorization", `Bearer ${key}`);
-  return fetch(`${requireEnv("SUPABASE_URL")}/storage/v1/${path.replace(/^\//, "")}`, { ...init, headers });
+  // Tolerates a trailing slash on SUPABASE_URL (a common paste).
+  const base = requireEnv("SUPABASE_URL").trim().replace(/\/+$/, "");
+  return fetch(`${base}/storage/v1/${path.replace(/^\//, "")}`, { ...init, headers });
 }
 
 async function ok(res: Response, what: string) {

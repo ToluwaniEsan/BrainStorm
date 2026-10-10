@@ -36,7 +36,7 @@ export async function GET() {
     }),
     probe(env("SUPABASE_URL", "SUPABASE_SECRET_KEY", "SUPABASE_STORAGE_BUCKET"), async () => {
       const res = await storageFetch(`bucket/${storageBucket()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw Object.assign(new Error("Storage check failed"), { status: res.status });
     }),
     probe(env("GEMINI_API_KEY", "GEMINI_LIVE_MODEL", "GEMINI_FLASH_MODEL", "GEMINI_PRO_MODEL", "GEMINI_EMBED_MODEL"), async () => {
       await getGemini().models.get({ model: geminiModels.flash });

@@ -1,6 +1,6 @@
 import "server-only";
 import { auth0 } from "./auth0";
-import { provisionUser, schemaForSub } from "./db";
+import { EmailInUseError, provisionUser, schemaForSub } from "./db";
 import { HttpError } from "./http";
 
 // Subs this server instance provisioned recently. Entries expire so an
@@ -19,11 +19,20 @@ export async function requireUser(): Promise<User> {
   const session = await auth0.getSession();
   const sub = session?.user?.sub;
   if (!sub) throw new HttpError(401, "Sign in first");
+  const { name, email, picture } = session.user;
+  // One account per email, so only an address Auth0 has verified can be claimed.
+  if (email && session.user.email_verified !== true) {
+    throw new HttpError(403, "Verify your email address first, then sign in again");
+  }
   if ((provisioned.get(sub) ?? 0) < Date.now()) {
-    await provisionUser(sub);
+    try {
+      await provisionUser(sub, { email, name, emailVerified: session.user.email_verified });
+    } catch (err) {
+      if (err instanceof EmailInUseError) throw new HttpError(409, err.message);
+      throw err;
+    }
     provisioned.set(sub, Date.now() + PROVISION_TTL_MS);
   }
-  const { name, email, picture } = session.user;
   return { sub, schema: schemaForSub(sub), name, email, picture };
 }
 

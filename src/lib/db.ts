@@ -30,14 +30,31 @@ export function schemaForSub(sub: string): string {
 }
 
 // Creates the user's schema on first sign-in (safe to call every time).
-// Concurrent first requests for the same sub would race on the registry's
-// unique schema_name, so they take a per-sub lock and run one at a time.
-export async function provisionUser(sub: string): Promise<string> {
-  const [row] = await getSql().begin(async (tx) => {
-    await tx`select pg_advisory_xact_lock(hashtext(${"provision:" + sub}))`;
-    return tx`select app.provision_user(${sub}) as schema`;
-  });
-  return row.schema as string;
+export type Identity = { email?: string | null; name?: string | null; emailVerified?: boolean | null };
+
+// Thrown when the signed-in user's email already belongs to another account.
+export class EmailInUseError extends Error {
+  constructor() {
+    super("This email is already linked to another BrainStorm account");
+  }
+}
+
+// Registers the user (sub, email, name) and creates their schema on first
+// sign-in; safe to call every time. Concurrent first requests for the same sub
+// would race on the registry's unique schema_name, so they take a per-sub lock
+// and run one at a time.
+export async function provisionUser(sub: string, who: Identity = {}): Promise<string> {
+  try {
+    const [row] = await getSql().begin(async (tx) => {
+      await tx`select pg_advisory_xact_lock(hashtext(${"provision:" + sub}))`;
+      return tx`select app.register_user(${sub}, ${who.email ?? null}, ${who.name ?? null},
+        ${who.emailVerified ?? null}) as schema`;
+    });
+    return row.schema as string;
+  } catch (err) {
+    if ((err as { code?: string }).code === "BS409") throw new EmailInUseError();
+    throw err;
+  }
 }
 
 export type Tx = Parameters<Parameters<PostgresJsDatabase["transaction"]>[0]>[0];

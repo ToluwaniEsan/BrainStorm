@@ -2,17 +2,24 @@ import { cache, Suspense } from "react";
 
 import { profile } from "@/db/schema";
 import { auth0 } from "@/lib/auth0";
-import { provisionUser, withUser } from "@/lib/db";
+import { EmailInUseError, provisionUser, withUser, type Identity } from "@/lib/db";
 
 // Test page for the sign-in flow. Signed out: a Log in button that goes to
 // Auth0. Signed in: "Welcome", plus what happened in Supabase for this user.
-const supabaseCheck = cache(async (sub: string) => {
-  // Same call the API makes on first use: registers the sub in app.users
-  // and creates the user's own schema (safe to repeat).
+// Plain arguments so React's per-request cache can match repeat calls.
+const supabaseCheck = cache(async (sub: string, email?: string, name?: string, emailVerified?: boolean) => {
+  const who: Identity = { email, name, emailVerified };
+  // Same rules and call the API uses: only a verified email can be claimed,
+  // then the sub, email and name are saved in app.users and the user's own
+  // schema is created (safe to repeat).
+  if (who.email && who.emailVerified !== true) {
+    return { ok: false as const, error: "Verify your email address first, then sign in again." };
+  }
   let schema: string;
   try {
-    schema = await provisionUser(sub);
+    schema = await provisionUser(sub, who);
   } catch (err) {
+    if (err instanceof EmailInUseError) return { ok: false as const, error: `${err.message}.` };
     console.error("Supabase sign-up failed", err);
     return { ok: false as const, error: message(err) };
   }
@@ -59,7 +66,7 @@ async function Home() {
   }
 
   const { sub, name, email } = session.user;
-  const db = await supabaseCheck(sub);
+  const db = await supabaseCheck(sub, email, name, session.user.email_verified);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background p-8 text-foreground">
@@ -67,9 +74,10 @@ async function Home() {
       <dl className="flex w-full max-w-xl flex-col gap-3 rounded-lg border border-zinc-300 p-5 dark:border-zinc-700">
         <Row label="Auth0 user" value={name ?? email ?? "(no name)"} />
         <Row label="Auth0 id (sub)" value={sub} />
+        <Row label="Email" value={email ?? "(none from this login method)"} />
         {db.ok ? (
           <>
-            <Row label="Supabase" value="Saved. You're in app.users." />
+            <Row label="Supabase" value="Saved. Your id, email and name are in app.users." />
             <Row label="Your schema" value={db.schema} />
             <Row label="Profile row" value={db.profile} />
           </>

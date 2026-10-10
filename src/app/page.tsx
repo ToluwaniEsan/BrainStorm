@@ -1,4 +1,5 @@
 import { cache, Suspense } from "react";
+import "./globals.css";
 
 import { profile } from "@/db/schema";
 import { auth0 } from "@/lib/auth0";

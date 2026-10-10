@@ -2,10 +2,11 @@ import { cache, Suspense } from "react";
 
 import { profile } from "@/db/schema";
 import { auth0 } from "@/lib/auth0";
+import { LiveDemo } from "@/components/live-demo/live-demo";
 import { EmailInUseError, provisionUser, withUser, type Identity } from "@/lib/db";
 
-// Test page for the sign-in flow. Signed out: a Log in button that goes to
-// Auth0. Signed in: "Welcome", plus what happened in Supabase for this user.
+// Test page. Signed out: a Log in button that goes to Auth0. Signed in: the
+// Gemini Live demo, with a details panel showing what happened in Supabase.
 // Plain arguments so React's per-request cache can match repeat calls.
 const supabaseCheck = cache(async (sub: string, email?: string, name?: string, emailVerified?: boolean) => {
   const who: Identity = { email, name, emailVerified };
@@ -69,28 +70,36 @@ async function Home() {
   const db = await supabaseCheck(sub, email, name, session.user.email_verified);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background p-8 text-foreground">
-      <h1 className="text-5xl font-semibold">Welcome to Clutter</h1>
-      {/*
-      <dl className="flex w-full max-w-xl flex-col gap-3 rounded-lg border border-zinc-300 p-5 dark:border-zinc-700">
-        <Row label="Auth0 user" value={name ?? email ?? "(no name)"} />
-        <Row label="Auth0 id (sub)" value={sub} />
-        <Row label="Email" value={email ?? "(none from this login method)"} />
-        {db.ok ? (
-          <>
-            <Row label="Supabase" value="Saved. Your id, email and name are in app.users." />
-            <Row label="Your schema" value={db.schema} />
-            <Row label="Profile row" value={db.profile} />
-          </>
-        ) : (
-          <Row label="Supabase" value={`Failed: ${db.error}`} />
-        )}
-      </dl>
-      */}
-      
-      <a className="underline" href="/auth/logout">
-        Log out
-      </a>
+    <main className="flex min-h-screen flex-col items-center gap-8 bg-background p-6 text-foreground sm:p-10">
+      <header className="flex w-full max-w-6xl items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Welcome to Clutter</h1>
+          <p className="text-sm text-zinc-500">Signed in as {name ?? email ?? sub}</p>
+        </div>
+        <a className="text-sm underline" href="/auth/logout">
+          Log out
+        </a>
+      </header>
+      <LiveDemo />
+      <details className="w-full max-w-6xl text-sm">
+        <summary className="cursor-pointer text-zinc-500">
+          Account check: {db.ok ? "saved in Supabase" : "Supabase problem"}
+        </summary>
+        <dl className="mt-3 flex flex-col gap-3 rounded-lg border border-zinc-300 p-5 dark:border-zinc-700">
+          <Row label="Auth0 user" value={name ?? email ?? "(no name)"} />
+          <Row label="Auth0 id (sub)" value={sub} />
+          <Row label="Email" value={email ?? "(none from this login method)"} />
+          {db.ok ? (
+            <>
+              <Row label="Supabase" value="Saved. Your id, email and name are in app.users." />
+              <Row label="Your schema" value={db.schema} />
+              <Row label="Profile row" value={db.profile} />
+            </>
+          ) : (
+            <Row label="Supabase" value={`Failed: ${db.error}`} />
+          )}
+        </dl>
+      </details>
     </main>
   );
 }

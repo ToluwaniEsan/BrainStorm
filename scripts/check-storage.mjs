@@ -20,7 +20,11 @@ try {
     console.error(`Supabase key works, but there is no bucket named "${bucket}". Create it (private) in Storage.`);
     process.exit(1);
   }
-  console.log(`Supabase Storage works. Bucket "${bucket}" exists and is ${found.public ? "PUBLIC (make it private)" : "private"}.`);
+  if (found.public) {
+    console.error(`Bucket "${bucket}" is PUBLIC. Make it private in Storage (or rerun npm run db:migrate).`);
+    process.exit(1);
+  }
+  console.log(`Supabase Storage works. Bucket "${bucket}" exists and is private.`);
 } catch (err) {
   console.error(`Supabase Storage call failed: ${err instanceof Error ? err.message : err}`);
   process.exit(1);

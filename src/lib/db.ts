@@ -8,13 +8,14 @@ import { requireEnv } from "./env";
 // Drizzle has no API key of its own. It talks to Supabase Postgres through
 // DATABASE_URL: the transaction pooler string (port 6543) logged in as the
 // brainstorm_app role, which owns no tables and so is always held to RLS.
-// The pooler doesn't support prepared statements, hence `prepare: false`.
+// The pooler doesn't support prepared statements, hence `prepare: false`, and a
+// small per-instance pool keeps many Vercel instances under the pooler's client limit.
 
 let client: postgres.Sql | undefined;
 let database: PostgresJsDatabase | undefined;
 
 export function getSql(): postgres.Sql {
-  client ??= postgres(requireEnv("DATABASE_URL"), { prepare: false });
+  client ??= postgres(requireEnv("DATABASE_URL"), { prepare: false, max: 5 });
   return client;
 }
 

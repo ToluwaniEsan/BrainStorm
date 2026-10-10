@@ -20,9 +20,13 @@ for (const [name, url] of targets) {
   const sql = postgres(url, { prepare: false, max: 1, connect_timeout: 15 });
   try {
     const [{ version }] = await sql`select version()`;
-    const [vector] = await sql`select name from pg_available_extensions where name = 'vector'`;
+    const [vector] = await sql`select extversion from pg_extension where extname = 'vector'`;
     const [me] = await sql`select current_user as role, rolbypassrls as bypass from pg_roles where rolname = current_user`;
-    console.log(`${name} works as ${me.role}: ${version.split(",")[0]}. pgvector ${vector ? "available" : "NOT available"}.`);
+    console.log(`${name} works as ${me.role}: ${version.split(",")[0]}. pgvector ${vector ? vector.extversion : "NOT enabled"}.`);
+    if (!vector) {
+      failed = true;
+      console.error("pgvector isn't enabled. Run npm run db:migrate first.");
+    }
     if (name === "DATABASE_URL" && (me.role !== "brainstorm_app" || me.bypass)) {
       failed = true;
       console.error("DATABASE_URL must log in as brainstorm_app (see db/README.md), or row-level security won't protect user data.");

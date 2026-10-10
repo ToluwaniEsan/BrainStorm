@@ -97,7 +97,7 @@ export default function Page() {
     <Suspense
       fallback={
         <main className="flex min-h-screen items-center justify-center bg-background p-8 text-foreground">
-          Loading...
+          Loading 🤔...
         </main>
       }
     >

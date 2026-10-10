@@ -35,7 +35,7 @@ export async function provisionUser(sub: string): Promise<string> {
   return row.schema as string;
 }
 
-type Tx = Parameters<Parameters<PostgresJsDatabase["transaction"]>[0]>[0];
+export type Tx = Parameters<Parameters<PostgresJsDatabase["transaction"]>[0]>[0];
 
 // Runs fn in a transaction scoped to one signed-in user: app.sub drives RLS
 // and search_path points at their schema. Pass the sub from the verified

@@ -9,7 +9,7 @@ export type MemorySource = { sourceType: string; sourceTable: string; sourceId: 
 // Source tables whose rows own their chunks. Chunks for these are only
 // written while the row still exists, so a delete racing an index can't
 // leave orphans behind.
-const OWNED = new Set(["profile", "files", "links", "reflections", "achievements", "transcripts", "track_items"]);
+const OWNED = new Set(["profile", "user_facts", "files", "links", "reflections", "achievements", "transcripts", "track_items"]);
 
 export function clearMemory(tx: Tx, src: Pick<MemorySource, "sourceTable" | "sourceId">) {
   return tx

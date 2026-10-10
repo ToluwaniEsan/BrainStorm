@@ -20,6 +20,10 @@ export const profile = pgTable("profile", {
   id: id(), ownerSub: ownerSub(),
   displayName: text("display_name"), intro: text("intro"),
   portfolio: text("portfolio"), aboutWork: text("about_work"),
+  // Added by 0003_learning.sql (app.upgrade_user).
+  learningEnabled: boolean("learning_enabled").notNull().default(true),
+  understanding: text("understanding"),
+  understandingUpdatedAt: timestamp("understanding_updated_at", { withTimezone: true }),
   createdAt: createdAt(), updatedAt: updatedAt(),
 });
 
@@ -120,3 +124,13 @@ export const memoryChunks = pgTable("memory_chunks", {
   embedding: vector("embedding", { dimensions: 768 }),
   createdAt: createdAt(),
 }, (t) => [index("memory_chunks_embedding_idx").using("hnsw", t.embedding.op("vector_cosine_ops"))]);
+
+// Things BrainStorm learned about the user (0003_learning.sql). source_type is
+// "conversation", "link", "file" or "profile"; the user can delete any of them.
+export const userFacts = pgTable("user_facts", {
+  id: id(), ownerSub: ownerSub(),
+  fact: text("fact").notNull(),
+  sourceType: text("source_type").notNull(),
+  sourceId: uuid("source_id"),
+  createdAt: createdAt(),
+});

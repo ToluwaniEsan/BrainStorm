@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { files } from "@/db/schema";
 import { withUser } from "@/lib/db";
@@ -5,6 +6,7 @@ import { api, notFound, uuidParam } from "@/lib/http";
 import { requireUser } from "@/lib/session";
 import { deleteObjects, getObject } from "@/lib/supabase-storage";
 import { clearMemory } from "@/server/memory";
+import { refreshLater } from "@/server/understanding";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -36,5 +38,6 @@ export const DELETE = api(async (_req: Request, { params }: Ctx) => {
     await clearMemory(tx, { sourceTable: "files", sourceId: id });
     await tx.delete(files).where(eq(files.id, id));
   });
+  after(() => refreshLater(user.sub));
   return { ok: true };
 });

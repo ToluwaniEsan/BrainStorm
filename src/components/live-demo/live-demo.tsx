@@ -4,22 +4,28 @@ import { EndSensitivity, GoogleGenAI, Modality, type LiveServerMessage, type Ses
 import { useEffect, useRef, useState } from "react";
 
 import { Player, startMic, type Mic } from "./audio";
-import { applyTool, emptyBoard, liveInstruction, type Board } from "./tracks";
+import { applyTool, emptyBoard, type Board } from "./tracks";
 
 type Status = "idle" | "connecting" | "listening" | "error";
 type LogEntry = { id: number; at: string; kind: "tool" | "thought" | "info" | "error"; title: string; detail?: string };
 type Line = { id: number; who: "you" | "gemini"; text: string };
 
-// Gemini only gets to speak when the user invites it. The Live prompt asks it
-// to stay quiet otherwise; this is the backstop for when it talks anyway.
+// Fast check for the obvious ways of asking Gemini for a response. Anything
+// subtler ("do you feel me?") is caught by Gemini Flash's reply_to_user call.
 const INVITE =
-  /\b(what do you think|what'?s your (take|opinion|view)|what is your (take|opinion|view)|any (thoughts|ideas|feedback|questions)|your thoughts|thoughts on (that|this)|what should i|do you think|can you (help|tell me|ask me)|help me (think|out)|hey gemini|over to you)\b/i;
+  /\b(what do you think|what'?s your (take|opinion|view)|what is your (take|opinion|view)|any (thoughts|ideas|feedback)|your thoughts|thoughts on (that|this)|what should i|do you think|(do|can) you (feel|see|get) me|you feel me|you know what i mean|does (that|this) make sense|be honest|am i (crazy|wrong|right)|can you (help|tell me|ask me)|help me (think|out)|talk to me|hey (gemini|brainstorm)|over to you)\b/i;
+
+// While Gemini's reply waits for a verdict on whether the user asked for it.
+const HOLD_MS = 6000;
 
 // Demo of BrainStorm's Deep Thinking voice mode. The browser gets a one-time
 // token from /api/live/token and talks to Gemini Live directly for
-// transcription and voice. Every couple of seconds the new transcript goes to
-// /api/live/tracks, where Gemini Flash sorts it into tracks with tool calls.
-// (Gemini Live itself only acts when the speaker pauses.) Nothing is saved.
+// transcription and voice, with instructions built from what BrainStorm knows
+// about the user (/api/live/context). Every couple of seconds the new
+// transcript goes to /api/live/tracks, where Gemini Flash sorts it into tracks
+// and says whether the user asked for a reply. Gemini's voice only plays when
+// they did. What the user said goes to /api/live/learn (if learning is on).
+// The tracks themselves aren't saved yet.
 export function LiveDemo() {
   const [status, setStatus] = useState<Status>("idle");
   const [board, setBoard] = useState<Board>(emptyBoard);
@@ -39,8 +45,15 @@ export function LiveDemo() {
   const pending = useRef(""); // transcript not yet sorted into tracks
   const filed = useRef(""); // transcript already sorted, for context
   const sorting = useRef(false);
-  const heard = useRef(""); // what the user said this turn, to spot an invitation
-  const muted = useRef(false); // already logged a muted reply this turn
+  // Reply gate. "idle": Gemini hasn't spoken since the user did. "holding":
+  // it started a reply nobody has confirmed was asked for, so it's buffered.
+  // "allowed": play it. "muted": drop it.
+  const gate = useRef<"idle" | "holding" | "allowed" | "muted">("idle");
+  const held = useRef<{ audio: string[]; text: string; done: boolean }>({ audio: [], text: "", done: false });
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const invitedNext = useRef(false); // the user's latest words asked for a reply
+  const spokeSinceUser = useRef(false);
+  const unlearned = useRef(""); // what the user said that /api/live/learn hasn't seen
 
   const addLog = (kind: LogEntry["kind"], title: string, detail?: string) =>
     setLog((l) => [{ id: ++seq.current, at: new Date().toLocaleTimeString(), kind, title, detail }, ...l].slice(0, 200));
@@ -58,6 +71,46 @@ export function LiveDemo() {
     }
   };
 
+  function showReply(text: string) {
+    turn.current.you = undefined;
+    appendLine("gemini", text);
+  }
+
+  function release() {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    const h = held.current;
+    h.audio.forEach((a) => player.current?.play(a));
+    if (h.text) showReply(h.text);
+    held.current = { audio: [], text: "", done: false };
+    gate.current = h.done ? "idle" : "allowed";
+  }
+
+  function mute(why: string) {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    const wasDone = held.current.done;
+    held.current = { audio: [], text: "", done: false };
+    gate.current = wasDone ? "idle" : "muted";
+    addLog("info", "Muted a reply you didn't ask for", why);
+  }
+
+  // Asks Gemini Live to answer now (used when Flash spots a request for a
+  // reply that Live itself let pass).
+  function nudge() {
+    invitedNext.current = true;
+    session.current?.sendClientContent({
+      turns: [{ role: "user", parts: [{ text: "(I'm asking for your response to what I just said. Reply now, briefly.)" }] }],
+      turnComplete: true,
+    });
+  }
+
+  function onUserWords(text: string) {
+    pending.current += text;
+    unlearned.current += text;
+    spokeSinceUser.current = false;
+    if (INVITE.test(text)) invitedNext.current = true;
+    if (unlearned.current.length > 3000) void learn();
+  }
+
   function onMessage(msg: LiveServerMessage) {
     const sc = msg.serverContent;
     if (sc) {
@@ -66,33 +119,68 @@ export function LiveDemo() {
         setInterim("");
         turn.current.gemini = undefined;
         appendLine("you", sc.inputTranscription.text);
-        pending.current += sc.inputTranscription.text;
-        heard.current = (heard.current + sc.inputTranscription.text).slice(-300);
+        onUserWords(sc.inputTranscription.text);
       }
-      const invited = INVITE.test(heard.current);
-      const speaking = !!sc.outputTranscription?.text || !!sc.modelTurn?.parts?.some((p) => p.inlineData?.data);
-      if (speaking && !invited && !muted.current) {
-        muted.current = true;
-        addLog("info", "Muted a reply you didn't ask for", 'Gemini only speaks when you ask, e.g. "what do you think?"');
-      }
-      if (invited && sc.outputTranscription?.text) {
-        turn.current.you = undefined;
-        appendLine("gemini", sc.outputTranscription.text);
-      }
+      const audio = (sc.modelTurn?.parts ?? []).filter((p) => p.inlineData?.data && p.inlineData.mimeType?.startsWith("audio/"));
+      const text = sc.outputTranscription?.text ?? "";
       for (const part of sc.modelTurn?.parts ?? []) {
         if (part.thought && part.text) addLog("thought", "Gemini Live's reasoning", part.text);
-        else if (invited && part.inlineData?.data && part.inlineData.mimeType?.startsWith("audio/")) player.current?.play(part.inlineData.data);
       }
-      if (sc.interrupted) player.current?.clear();
+      if (audio.length || text) {
+        spokeSinceUser.current = true;
+        if (gate.current === "idle") {
+          if (invitedNext.current) gate.current = "allowed";
+          else {
+            // Not obviously asked for: hold it while Flash checks the user's words.
+            gate.current = "holding";
+            holdTimer.current = setTimeout(() => mute("No request for a reply was found in time."), HOLD_MS);
+            void sortPending();
+          }
+        }
+        if (gate.current === "allowed") {
+          audio.forEach((p) => player.current?.play(p.inlineData!.data!));
+          if (text) showReply(text);
+        } else if (gate.current === "holding") {
+          held.current.audio.push(...audio.map((p) => p.inlineData!.data!));
+          held.current.text += text;
+        }
+      }
+      if (sc.interrupted) {
+        player.current?.clear();
+        if (gate.current === "holding") held.current = { audio: [], text: "", done: false };
+      }
       if (sc.turnComplete) {
         turn.current = {};
-        heard.current = "";
-        muted.current = false;
+        if (gate.current === "holding") held.current.done = true;
+        else {
+          gate.current = "idle";
+          invitedNext.current = false;
+        }
         void sortPending();
       }
     }
 
     if (msg.goAway) addLog("info", "Gemini will end this session soon", `Time left: ${msg.goAway.timeLeft ?? "?"}`);
+  }
+
+  // Sends what the user said to /api/live/learn, which saves lasting facts
+  // about them (only if they left learning on in their profile).
+  async function learn() {
+    const text = unlearned.current.trim();
+    if (!text) return;
+    unlearned.current = "";
+    try {
+      const res = await fetch("/api/live/learn", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? `Learning failed (${res.status})`);
+      if (body.learned?.length) addLog("info", "Learned about you", (body.learned as string[]).map((f) => `• ${f}`).join("\n"));
+    } catch (err) {
+      addLog("error", "Learning from this session failed", (err as Error).message);
+    }
   }
 
   // Sends the transcript gathered since the last call to Gemini Flash and
@@ -102,6 +190,7 @@ export function LiveDemo() {
     if (!text || sorting.current) return;
     sorting.current = true;
     pending.current = "";
+    let wantsReply = false;
     try {
       const b = boardRef.current;
       const res = await fetch("/api/live/tracks", {
@@ -118,24 +207,42 @@ export function LiveDemo() {
       if (!res.ok) throw new Error(body.error ?? `Track request failed (${res.status})`);
       filed.current += ` ${text}`;
       for (const t of (body.thoughts ?? []) as string[]) addLog("thought", "Gemini's reasoning", t);
+      let changed = false;
       for (const call of (body.calls ?? []) as { name: string; args: Record<string, unknown> }[]) {
+        const { reason, ...rest } = call.args;
+        const why = typeof reason === "string" ? `Why: ${reason}` : "";
+        if (call.name === "reply_to_user") {
+          wantsReply = true;
+          addLog("tool", "You asked Gemini for a response", why);
+          continue;
+        }
+        changed = true;
         const { board: next, result } = applyTool(boardRef.current, call.name, call.args);
         boardRef.current = next;
-        const { reason, ...rest } = call.args;
         addLog(
           result.ok ? "tool" : "error",
           `${call.name}(${Object.entries(rest).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ")})`,
-          [typeof reason === "string" ? `Why: ${reason}` : "", result.ok ? "" : String(result.error)].filter(Boolean).join("\n"),
+          [why, result.ok ? "" : String(result.error)].filter(Boolean).join("\n"),
         );
       }
       setBoard(boardRef.current);
-      if (!body.calls?.length) addLog("info", "No track change", `For: "${text}"`);
+      if (!changed) addLog("info", "No track change", `For: "${text}"`);
     } catch (err) {
       // Keep the words so the next round tries them again.
       pending.current = `${text} ${pending.current}`.slice(-4000);
       addLog("error", "Sorting into tracks failed", (err as Error).message);
     } finally {
       sorting.current = false;
+    }
+
+    if (wantsReply) {
+      if (gate.current === "holding") release();
+      else if (!spokeSinceUser.current || gate.current === "muted") nudge();
+      else invitedNext.current = true;
+    } else if (gate.current === "holding") {
+      // Words not yet checked may still hold the request; check them first.
+      if (pending.current.trim()) void sortPending();
+      else mute("Gemini only speaks when you turn to it for a response.");
     }
   }
 
@@ -144,6 +251,12 @@ export function LiveDemo() {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? `Token request failed (${res.status})`);
     addLog("info", "Got a one-time Gemini token", `Model: ${body.model}`);
+
+    const ctx = await fetch("/api/live/context").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (!ctx) addLog("error", "Couldn't load what BrainStorm knows about you", "Gemini starts without it.");
+    else if (!ctx.learningEnabled) addLog("info", "Learning is off", "BrainStorm uses only what's in your profile.");
+    const systemInstruction: string =
+      ctx?.instruction ?? "Stay silent unless the user asks for your response. Then answer briefly and ask a grounding follow-up question.";
 
     const ai = new GoogleGenAI({ apiKey: body.token, httpOptions: { apiVersion: "v1alpha" } });
     // Resolves once Gemini accepts the settings; rejects if it closes first.
@@ -155,7 +268,7 @@ export function LiveDemo() {
       model: body.model,
       config: {
         responseModalities: [Modality.AUDIO],
-        systemInstruction: liveInstruction,
+        systemInstruction,
         // End a turn soon after the speaker pauses, so the final transcript
         // arrives sooner.
         realtimeInputConfig: {
@@ -253,6 +366,10 @@ export function LiveDemo() {
     setLevel(0);
     setStatus((st) => (st === "error" ? st : "idle"));
     void sortPending(); // file whatever was said last
+    void learn();
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    gate.current = "idle";
+    held.current = { audio: [], text: "", done: false };
   }
 
   function sendTyped(e: React.FormEvent) {
@@ -261,8 +378,7 @@ export function LiveDemo() {
     if (!text || !session.current) return;
     turn.current.gemini = undefined;
     appendLine("you", `${text} (typed)`);
-    pending.current += ` ${text}`;
-    heard.current = `${heard.current} ${text}`.slice(-300);
+    onUserWords(` ${text}`);
     session.current.sendRealtimeInput({ text });
     setTyped("");
   }
@@ -271,6 +387,7 @@ export function LiveDemo() {
     boardRef.current = emptyBoard;
     pending.current = "";
     filed.current = "";
+    unlearned.current = "";
     setBoard(emptyBoard);
     setLog([]);
     setLines([]);

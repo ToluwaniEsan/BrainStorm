@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { desc } from "drizzle-orm";
 import { files } from "@/db/schema";
 import { withUser } from "@/lib/db";
@@ -6,6 +7,7 @@ import { requireUser } from "@/lib/session";
 import { deleteObjects, putObject } from "@/lib/supabase-storage";
 import { extractText } from "@/server/extract";
 import { indexQuietly } from "@/server/memory";
+import { refreshLater } from "@/server/understanding";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -57,7 +59,10 @@ export const POST = api(async (req: Request) => {
     await deleteObjects([storagePath]).catch((e) => console.error("Cleaning up upload failed", e));
     throw err;
   }
-  if (extracted) await indexQuietly(user.sub, { sourceType: "file", sourceTable: "files", sourceId: id }, extracted);
+  if (extracted) {
+    await indexQuietly(user.sub, { sourceType: "file", sourceTable: "files", sourceId: id }, extracted);
+    after(() => refreshLater(user.sub));
+  }
   return Response.json({ ...row, extractedText: undefined, hasText: Boolean(extracted) }, { status: 201 });
 });
 

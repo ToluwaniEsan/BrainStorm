@@ -57,3 +57,12 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Local setup
+
+1. `npm install`
+2. Copy `.env.example` to `.env.local` and fill in the values. `.env.local` is git-ignored, so keys never reach the repo.
+3. `npm run check:gemini` confirms the Gemini key and model id work.
+4. `npm run dev`
+
+Gemini code lives in `src/lib/gemini.ts`. It is server-only, so the API key can't end up in the browser bundle.

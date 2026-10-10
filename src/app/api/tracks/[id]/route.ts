@@ -1,6 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { memoryChunks, trackItems, tracks } from "@/db/schema";
-import { withUser } from "@/lib/db";
+import { lockForUser, withUser } from "@/lib/db";
 import { api, bool, defined, int, notFound, optUuid, readBody, str, uuidParam } from "@/lib/http";
 import { requireUser } from "@/lib/session";
 
@@ -17,11 +17,14 @@ export const PATCH = api(async (req: Request, { params }: Ctx) => {
     sortOrder: int(b, "sortOrder"),
     isActive: bool(b, "isActive"),
   });
-  const [row] = await withUser(user.sub, async (tx) => {
-    if (fields.isActive) await tx.update(tracks).set({ isActive: false });
-    return tx.update(tracks).set({ ...fields, updatedAt: new Date() }).where(eq(tracks.id, id)).returning();
+  return withUser(user.sub, async (tx) => {
+    if (fields.isActive) await lockForUser(tx, "active-track");
+    const [row] = await tx.update(tracks).set({ ...fields, updatedAt: new Date() }).where(eq(tracks.id, id)).returning();
+    // Throwing here rolls back, so an unknown id changes nothing.
+    if (!row) notFound("Track not found");
+    if (fields.isActive) await tx.update(tracks).set({ isActive: false }).where(ne(tracks.id, id));
+    return row;
   });
-  return row ?? notFound("Track not found");
 });
 
 export const DELETE = api(async (_req: Request, { params }: Ctx) => {

@@ -47,16 +47,22 @@ export async function deleteObjects(paths: string[]) {
 
 // Every object path under a prefix (nested one level: users/<schema>/<fileId>/<name>).
 export async function listPrefix(prefix: string): Promise<string[]> {
+  const PAGE = 1000;
   const list = async (p: string) => {
-    const res = await ok(
-      await storageFetch(`object/list/${storageBucket()}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prefix: p, limit: 1000 }),
-      }),
-      "list",
-    );
-    return (await res.json()) as { name: string; id: string | null }[];
+    const all: { name: string; id: string | null }[] = [];
+    for (let offset = 0; ; offset += PAGE) {
+      const res = await ok(
+        await storageFetch(`object/list/${storageBucket()}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ prefix: p, limit: PAGE, offset }),
+        }),
+        "list",
+      );
+      const page = (await res.json()) as { name: string; id: string | null }[];
+      all.push(...page);
+      if (page.length < PAGE) return all;
+    }
   };
   const out: string[] = [];
   for (const entry of await list(prefix)) {

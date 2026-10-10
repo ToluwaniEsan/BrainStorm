@@ -18,10 +18,7 @@ export const POST = api(async (req: Request, { params }: Ctx) => {
     sortOrder: int(b, "sortOrder"),
     confidence: str(b, "confidence", { max: 40 }) ?? undefined,
   };
-  const row = await withUser(user.sub, async (tx) => {
-    const [item] = await tx.insert(trackItems).values(values).returning();
-    await indexQuietly(tx, { sourceType: "realtime", sourceTable: "track_items", sourceId: item.id }, item.body);
-    return item;
-  });
+  const [row] = await withUser(user.sub, (tx) => tx.insert(trackItems).values(values).returning());
+  await indexQuietly(user.sub, { sourceType: "realtime", sourceTable: "track_items", sourceId: row.id }, row.body);
   return Response.json(row, { status: 201 });
 });

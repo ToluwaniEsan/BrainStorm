@@ -1,4 +1,3 @@
-import { withUser } from "@/lib/db";
 import { HttpError, api, optUuid, readBody, str } from "@/lib/http";
 import { requireUser } from "@/lib/session";
 import { indexText } from "@/server/memory";
@@ -15,6 +14,6 @@ export const POST = api(async (req: Request) => {
     sourceId,
   };
   if (!src.sourceType || !src.sourceTable) throw new HttpError(400, "sourceType and sourceTable can't be empty");
-  const chunks = await withUser(user.sub, (tx) => indexText(tx, src, text));
+  const chunks = await indexText(user.sub, src, text);
   return Response.json({ sourceId, chunks }, { status: 201 });
 });

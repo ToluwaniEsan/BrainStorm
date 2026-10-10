@@ -11,7 +11,7 @@ export class HttpError extends Error {
 }
 
 // Postgres errors that mean "bad input" rather than "server broke".
-const BAD_INPUT_CODES = new Set(["22P02", "22007", "22008", "23503", "23514", "23502", "22001"]);
+const BAD_INPUT_CODES = new Set(["22P02", "22003", "22007", "22008", "23503", "23514", "23502", "22001"]);
 
 function pgCode(err: unknown): string | undefined {
   for (let e = err as { code?: unknown; cause?: unknown } | undefined; e; e = e.cause as typeof e) {
@@ -75,7 +75,9 @@ export function str(b: Record<string, unknown>, key: string, { required = false,
 export function int(b: Record<string, unknown>, key: string) {
   const v = b[key];
   if (v === undefined) return undefined;
-  if (typeof v !== "number" || !Number.isInteger(v)) throw new HttpError(400, `${key} must be an integer`);
+  if (typeof v !== "number" || !Number.isInteger(v) || v < -2_147_483_648 || v > 2_147_483_647) {
+    throw new HttpError(400, `${key} must be a whole number`);
+  }
   return v;
 }
 

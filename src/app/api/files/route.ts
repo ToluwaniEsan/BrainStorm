@@ -3,7 +3,7 @@ import { files } from "@/db/schema";
 import { withUser } from "@/lib/db";
 import { HttpError, api } from "@/lib/http";
 import { requireUser } from "@/lib/session";
-import { putObject } from "@/lib/supabase-storage";
+import { deleteObjects, putObject } from "@/lib/supabase-storage";
 import { extractText } from "@/server/extract";
 import { indexQuietly } from "@/server/memory";
 
@@ -47,14 +47,17 @@ export const POST = api(async (req: Request) => {
     console.error("Text extraction failed", err);
   }
 
-  const row = await withUser(user.sub, async (tx) => {
-    const [f] = await tx
-      .insert(files)
-      .values({ id, filename, mimeType, sizeBytes: file.size, storagePath, extractedText: extracted })
-      .returning();
-    if (extracted) await indexQuietly(tx, { sourceType: "file", sourceTable: "files", sourceId: id }, extracted);
-    return f;
-  });
+  let row;
+  try {
+    [row] = await withUser(user.sub, (tx) =>
+      tx.insert(files).values({ id, filename, mimeType, sizeBytes: file.size, storagePath, extractedText: extracted }).returning(),
+    );
+  } catch (err) {
+    // No row means no way to find the object later, so remove it now.
+    await deleteObjects([storagePath]).catch((e) => console.error("Cleaning up upload failed", e));
+    throw err;
+  }
+  if (extracted) await indexQuietly(user.sub, { sourceType: "file", sourceTable: "files", sourceId: id }, extracted);
   return Response.json({ ...row, extractedText: undefined, hasText: Boolean(extracted) }, { status: 201 });
 });
 

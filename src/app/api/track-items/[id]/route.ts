@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
-import { memoryChunks, trackItems } from "@/db/schema";
+import { trackItems } from "@/db/schema";
 import { withUser } from "@/lib/db";
 import { api, defined, int, notFound, optUuid, readBody, str, uuidParam } from "@/lib/http";
 import { requireUser } from "@/lib/session";
-import { indexQuietly } from "@/server/memory";
+import { clearMemory, indexQuietly } from "@/server/memory";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -18,21 +18,22 @@ export const PATCH = api(async (req: Request, { params }: Ctx) => {
     sortOrder: int(b, "sortOrder"),
     confidence: str(b, "confidence", { max: 40 }) ?? undefined,
   });
-  return withUser(user.sub, async (tx) => {
-    const [item] = await tx.update(trackItems).set({ ...fields, updatedAt: new Date() }).where(eq(trackItems.id, id)).returning();
-    if (!item) notFound("Item not found");
-    if (fields.body) {
-      await indexQuietly(tx, { sourceType: "realtime", sourceTable: "track_items", sourceId: item.id }, item.body);
-    }
-    return item;
-  });
+  const [item] = await withUser(user.sub, (tx) =>
+    tx.update(trackItems).set({ ...fields, updatedAt: new Date() }).where(eq(trackItems.id, id)).returning(),
+  );
+  if (!item) notFound("Item not found");
+  // Re-index on any body change, including clearing it (that drops its chunks).
+  if (fields.body !== undefined) {
+    await indexQuietly(user.sub, { sourceType: "realtime", sourceTable: "track_items", sourceId: item.id }, item.body);
+  }
+  return item;
 });
 
 export const DELETE = api(async (_req: Request, { params }: Ctx) => {
   const user = await requireUser();
   const id = uuidParam((await params).id);
   const [row] = await withUser(user.sub, async (tx) => {
-    await tx.delete(memoryChunks).where(eq(memoryChunks.sourceId, id));
+    await clearMemory(tx, { sourceTable: "track_items", sourceId: id });
     return tx.delete(trackItems).where(eq(trackItems.id, id)).returning({ id: trackItems.id });
   });
   return row ? { ok: true } : notFound("Item not found");

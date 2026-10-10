@@ -62,6 +62,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 1. `npm install`
 2. Copy `.env.example` to `.env.local` and fill in the values. `.env.local` is git-ignored, so keys never reach the repo.
+   For Supabase, follow [db/README.md](db/README.md): it runs `npm run db:migrate` and sets up the app's database role.
 3. Run the checks for the keys you've filled in:
    - `npm run check:gemini` confirms the Gemini key and model id.
    - `npm run check:db` confirms both Supabase Postgres connection strings (and that pgvector is available).
@@ -76,7 +77,7 @@ All service code lives in `src/lib` and is server-only (`import "server-only"`),
 | File | Service | Env vars |
 | --- | --- | --- |
 | `gemini.ts` | Gemini | `GEMINI_API_KEY`, `GEMINI_*_MODEL` |
-| `db.ts` | Supabase Postgres through Drizzle | `DATABASE_URL` |
+| `db.ts` | Supabase Postgres through Drizzle, one schema per user with RLS | `DATABASE_URL` (app), `DIRECT_DATABASE_URL` (migrations) |
 | `supabase-storage.ts` | Supabase Storage (uploaded files) | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` |
 | `exa.ts` | Exa search and page contents | `EXA_API_KEY` |
 

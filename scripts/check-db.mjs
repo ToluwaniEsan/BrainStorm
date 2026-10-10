@@ -21,7 +21,12 @@ for (const [name, url] of targets) {
   try {
     const [{ version }] = await sql`select version()`;
     const [vector] = await sql`select name from pg_available_extensions where name = 'vector'`;
-    console.log(`${name} works: ${version.split(",")[0]}. pgvector ${vector ? "available" : "NOT available"}.`);
+    const [me] = await sql`select current_user as role, rolbypassrls as bypass from pg_roles where rolname = current_user`;
+    console.log(`${name} works as ${me.role}: ${version.split(",")[0]}. pgvector ${vector ? "available" : "NOT available"}.`);
+    if (name === "DATABASE_URL" && (me.role !== "brainstorm_app" || me.bypass)) {
+      failed = true;
+      console.error("DATABASE_URL must log in as brainstorm_app (see db/README.md), or row-level security won't protect user data.");
+    }
   } catch (err) {
     failed = true;
     console.error(`${name} failed: ${err instanceof Error ? err.message : err}`);

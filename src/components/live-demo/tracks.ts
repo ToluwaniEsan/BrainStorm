@@ -94,14 +94,18 @@ Rules:
 - New topic: create_track (put every NEW thought for it in first_thought / more_thoughts). Same topic: add_to_track.
 - Prefer an existing track over a near-duplicate. If they return to an earlier topic, switch_track, then add_to_track.
 - Use move_thought / edit_thought when they correct themselves; merge_tracks only when they say two topics are the same.
-- Split long speech into separate thoughts, one idea each. Skip filler ("um", "so yeah", "testing").
+- Split long speech into separate thoughts, one idea each. Skip filler ("um", "so yeah", "testing") and
+  questions aimed at the assistant ("what do you think?").
 - Every call needs a short "reason" quoting the cue in their speech.
 - If the NEW words hold no real thought, make no calls.`;
 
 // For Gemini Live, which now only listens, transcribes and talks back.
-export const liveInstruction = `You are BrainStorm's Deep Thinking listener. The user is thinking out loud and their
-words are being sorted into topics separately. Speak very little: a two- or three-word acknowledgement at most.
-Never offer your own ideas or suggestions. If the user asks you a direct question, answer briefly.`;
+export const liveInstruction = `You are BrainStorm's Deep Thinking listener. The user is thinking out loud, ranting freely,
+and their words are sorted into topics separately. Your default is complete silence: do not reply, acknowledge,
+or make any sound while they talk or pause.
+Only speak when the user clearly asks for your view, e.g. "what do you think?", "any thoughts?", "what should I do?".
+Then answer briefly and only reflect on what they said, or ask one short question about their own words.
+Never offer ideas, suggestions or inspiration of your own.`;
 
 type Args = Record<string, unknown>;
 const str = (a: Args, k: string) => (typeof a[k] === "string" ? (a[k] as string).trim() : "");

@@ -10,6 +10,11 @@ type Status = "idle" | "connecting" | "listening" | "error";
 type LogEntry = { id: number; at: string; kind: "tool" | "thought" | "info" | "error"; title: string; detail?: string };
 type Line = { id: number; who: "you" | "gemini"; text: string };
 
+// Gemini only gets to speak when the user invites it. The Live prompt asks it
+// to stay quiet otherwise; this is the backstop for when it talks anyway.
+const INVITE =
+  /\b(what do you think|what'?s your (take|opinion|view)|what is your (take|opinion|view)|any (thoughts|ideas|feedback|questions)|your thoughts|thoughts on (that|this)|what should i|do you think|can you (help|tell me|ask me)|help me (think|out)|hey gemini|over to you)\b/i;
+
 // Demo of BrainStorm's Deep Thinking voice mode. The browser gets a one-time
 // token from /api/live/token and talks to Gemini Live directly for
 // transcription and voice. Every couple of seconds the new transcript goes to
@@ -34,6 +39,8 @@ export function LiveDemo() {
   const pending = useRef(""); // transcript not yet sorted into tracks
   const filed = useRef(""); // transcript already sorted, for context
   const sorting = useRef(false);
+  const heard = useRef(""); // what the user said this turn, to spot an invitation
+  const muted = useRef(false); // already logged a muted reply this turn
 
   const addLog = (kind: LogEntry["kind"], title: string, detail?: string) =>
     setLog((l) => [{ id: ++seq.current, at: new Date().toLocaleTimeString(), kind, title, detail }, ...l].slice(0, 200));
@@ -60,18 +67,27 @@ export function LiveDemo() {
         turn.current.gemini = undefined;
         appendLine("you", sc.inputTranscription.text);
         pending.current += sc.inputTranscription.text;
+        heard.current = (heard.current + sc.inputTranscription.text).slice(-300);
       }
-      if (sc.outputTranscription?.text) {
+      const invited = INVITE.test(heard.current);
+      const speaking = !!sc.outputTranscription?.text || !!sc.modelTurn?.parts?.some((p) => p.inlineData?.data);
+      if (speaking && !invited && !muted.current) {
+        muted.current = true;
+        addLog("info", "Muted a reply you didn't ask for", 'Gemini only speaks when you ask, e.g. "what do you think?"');
+      }
+      if (invited && sc.outputTranscription?.text) {
         turn.current.you = undefined;
         appendLine("gemini", sc.outputTranscription.text);
       }
       for (const part of sc.modelTurn?.parts ?? []) {
-        if (part.thought && part.text) addLog("thought", "Gemini's reasoning", part.text);
-        else if (part.inlineData?.data && part.inlineData.mimeType?.startsWith("audio/")) player.current?.play(part.inlineData.data);
+        if (part.thought && part.text) addLog("thought", "Gemini Live's reasoning", part.text);
+        else if (invited && part.inlineData?.data && part.inlineData.mimeType?.startsWith("audio/")) player.current?.play(part.inlineData.data);
       }
       if (sc.interrupted) player.current?.clear();
       if (sc.turnComplete) {
         turn.current = {};
+        heard.current = "";
+        muted.current = false;
         void sortPending();
       }
     }
@@ -123,7 +139,7 @@ export function LiveDemo() {
     }
   }
 
-  async function connect(withThoughts: boolean): Promise<Session> {
+  async function connect(extras: { thoughts: boolean; quiet: boolean }): Promise<Session> {
     const res = await fetch("/api/live/token", { method: "POST" });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? `Token request failed (${res.status})`);
@@ -147,7 +163,9 @@ export function LiveDemo() {
         },
         inputAudioTranscription: {},
         outputAudioTranscription: {},
-        ...(withThoughts ? { thinkingConfig: { includeThoughts: true } } : {}),
+        ...(extras.thoughts ? { thinkingConfig: { includeThoughts: true } } : {}),
+        // Lets the model choose not to answer at all when nobody asked it.
+        ...(extras.quiet ? { proactivity: { proactiveAudio: true } } : {}),
       },
       callbacks: {
         onmessage: (m) => {
@@ -183,14 +201,24 @@ export function LiveDemo() {
     wanted.current = true;
     try {
       player.current = new Player();
-      let sess: Session;
-      try {
-        sess = await connect(true);
-      } catch (err) {
-        // Some Live models don't accept the "show thoughts" setting; retry without it.
-        addLog("info", "Retrying without model thoughts", (err as Error).message);
-        sess = await connect(false);
+      // Some Live models reject the "show thoughts" or "may stay silent"
+      // settings, so fall back step by step.
+      const attempts = [
+        { thoughts: true, quiet: true },
+        { thoughts: false, quiet: true },
+        { thoughts: false, quiet: false },
+      ];
+      let sess: Session | undefined;
+      for (const [i, extras] of attempts.entries()) {
+        try {
+          sess = await connect(extras);
+          break;
+        } catch (err) {
+          if (i === attempts.length - 1) throw err;
+          addLog("info", "Gemini rejected a setting, retrying with fewer", (err as Error).message);
+        }
       }
+      if (!sess) throw new Error("Could not connect");
       if (!wanted.current) {
         sess.close();
         return;
@@ -234,6 +262,7 @@ export function LiveDemo() {
     turn.current.gemini = undefined;
     appendLine("you", `${text} (typed)`);
     pending.current += ` ${text}`;
+    heard.current = `${heard.current} ${text}`.slice(-300);
     session.current.sendRealtimeInput({ text });
     setTyped("");
   }

@@ -30,8 +30,13 @@ export function schemaForSub(sub: string): string {
 }
 
 // Creates the user's schema on first sign-in (safe to call every time).
+// Concurrent first requests for the same sub would race on the registry's
+// unique schema_name, so they take a per-sub lock and run one at a time.
 export async function provisionUser(sub: string): Promise<string> {
-  const [row] = await getSql()`select app.provision_user(${sub}) as schema`;
+  const [row] = await getSql().begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(hashtext(${"provision:" + sub}))`;
+    return tx`select app.provision_user(${sub}) as schema`;
+  });
   return row.schema as string;
 }
 

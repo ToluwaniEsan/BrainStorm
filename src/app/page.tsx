@@ -52,7 +52,7 @@ async function Home() {
   if (!session) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8 text-foreground">
-        <h1 className="text-4xl font-semibold">BrainStorm</h1>
+        <h1 className="text-4xl font-semibold">Clutter</h1>
         <p>Sign in to continue.</p>
         <a className="rounded-md bg-foreground px-5 py-3 text-background" href="/auth/login">
           Log in
@@ -70,7 +70,8 @@ async function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background p-8 text-foreground">
-      <h1 className="text-5xl font-semibold">Welcome</h1>
+      <h1 className="text-5xl font-semibold">Welcome to Clutter</h1>
+      {/*
       <dl className="flex w-full max-w-xl flex-col gap-3 rounded-lg border border-zinc-300 p-5 dark:border-zinc-700">
         <Row label="Auth0 user" value={name ?? email ?? "(no name)"} />
         <Row label="Auth0 id (sub)" value={sub} />
@@ -85,6 +86,8 @@ async function Home() {
           <Row label="Supabase" value={`Failed: ${db.error}`} />
         )}
       </dl>
+      */}
+      
       <a className="underline" href="/auth/logout">
         Log out
       </a>

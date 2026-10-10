@@ -7,17 +7,28 @@ import { provisionUser, withUser } from "@/lib/db";
 // Test page for the sign-in flow. Signed out: a Log in button that goes to
 // Auth0. Signed in: "Welcome", plus what happened in Supabase for this user.
 const supabaseCheck = cache(async (sub: string) => {
+  // Same call the API makes on first use: registers the sub in app.users
+  // and creates the user's own schema (safe to repeat).
+  let schema: string;
   try {
-    // Same call the API makes on first use: registers the sub in app.users
-    // and creates the user's own schema (safe to repeat).
-    const schema = await provisionUser(sub);
-    const [p] = await withUser(sub, (tx) => tx.select().from(profile).limit(1));
-    return { ok: true as const, schema, hasProfile: Boolean(p) };
+    schema = await provisionUser(sub);
   } catch (err) {
-    console.error("Supabase check failed", err);
-    return { ok: false as const, error: err instanceof Error ? err.message : "Unknown error" };
+    console.error("Supabase sign-up failed", err);
+    return { ok: false as const, error: message(err) };
+  }
+  // Separate step: the user is already saved even if this read fails.
+  try {
+    const [p] = await withUser(sub, (tx) => tx.select().from(profile).limit(1));
+    return { ok: true as const, schema, profile: p ? "Yes" : "Not yet (made on first edit)" };
+  } catch (err) {
+    console.error("Profile read failed", err);
+    return { ok: true as const, schema, profile: `Read failed: ${message(err)}` };
   }
 });
+
+function message(err: unknown) {
+  return err instanceof Error ? err.message : "Unknown error";
+}
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -60,7 +71,7 @@ async function Home() {
           <>
             <Row label="Supabase" value="Saved. You're in app.users." />
             <Row label="Your schema" value={db.schema} />
-            <Row label="Profile row" value={db.hasProfile ? "Yes" : "Not yet (made on first edit)"} />
+            <Row label="Profile row" value={db.profile} />
           </>
         ) : (
           <Row label="Supabase" value={`Failed: ${db.error}`} />

@@ -1,18 +1,20 @@
 "use client";
 
-import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
+import { EndSensitivity, GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import { useEffect, useRef, useState } from "react";
 
 import { Player, startMic, type Mic } from "./audio";
-import { applyTool, emptyBoard, systemInstruction, trackTools, type Board } from "./tracks";
+import { applyTool, emptyBoard, liveInstruction, type Board } from "./tracks";
 
 type Status = "idle" | "connecting" | "listening" | "error";
 type LogEntry = { id: number; at: string; kind: "tool" | "thought" | "info" | "error"; title: string; detail?: string };
 type Line = { id: number; who: "you" | "gemini"; text: string };
 
 // Demo of BrainStorm's Deep Thinking voice mode. The browser gets a one-time
-// token from /api/live/token, talks to Gemini Live directly, and draws the
-// tracks Gemini builds through tool calls. Nothing is saved.
+// token from /api/live/token and talks to Gemini Live directly for
+// transcription and voice. Every couple of seconds the new transcript goes to
+// /api/live/tracks, where Gemini Flash sorts it into tracks with tool calls.
+// (Gemini Live itself only acts when the speaker pauses.) Nothing is saved.
 export function LiveDemo() {
   const [status, setStatus] = useState<Status>("idle");
   const [board, setBoard] = useState<Board>(emptyBoard);
@@ -29,6 +31,9 @@ export function LiveDemo() {
   const seq = useRef(0);
   const turn = useRef<{ you?: number; gemini?: number }>({});
   const wanted = useRef(false); // false once the user presses stop
+  const pending = useRef(""); // transcript not yet sorted into tracks
+  const filed = useRef(""); // transcript already sorted, for context
+  const sorting = useRef(false);
 
   const addLog = (kind: LogEntry["kind"], title: string, detail?: string) =>
     setLog((l) => [{ id: ++seq.current, at: new Date().toLocaleTimeString(), kind, title, detail }, ...l].slice(0, 200));
@@ -54,6 +59,7 @@ export function LiveDemo() {
         setInterim("");
         turn.current.gemini = undefined;
         appendLine("you", sc.inputTranscription.text);
+        pending.current += sc.inputTranscription.text;
       }
       if (sc.outputTranscription?.text) {
         turn.current.you = undefined;
@@ -64,28 +70,57 @@ export function LiveDemo() {
         else if (part.inlineData?.data && part.inlineData.mimeType?.startsWith("audio/")) player.current?.play(part.inlineData.data);
       }
       if (sc.interrupted) player.current?.clear();
-      if (sc.turnComplete) turn.current = {};
+      if (sc.turnComplete) {
+        turn.current = {};
+        void sortPending();
+      }
     }
 
-    const calls = msg.toolCall?.functionCalls ?? [];
-    if (calls.length) {
-      const responses = calls.map((call) => {
-        const args = (call.args ?? {}) as Record<string, unknown>;
-        const { board: next, result } = applyTool(boardRef.current, call.name ?? "", args);
+    if (msg.goAway) addLog("info", "Gemini will end this session soon", `Time left: ${msg.goAway.timeLeft ?? "?"}`);
+  }
+
+  // Sends the transcript gathered since the last call to Gemini Flash and
+  // applies the track changes it returns. One request at a time.
+  async function sortPending() {
+    const text = pending.current.trim();
+    if (!text || sorting.current) return;
+    sorting.current = true;
+    pending.current = "";
+    try {
+      const b = boardRef.current;
+      const res = await fetch("/api/live/tracks", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          text,
+          earlier: filed.current.slice(-1500),
+          active: b.active,
+          tracks: b.tracks.map((t) => ({ track_id: t.id, title: t.title, items: t.items.map((i) => ({ item_id: i.id, text: i.text })) })),
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? `Track request failed (${res.status})`);
+      filed.current += ` ${text}`;
+      for (const t of (body.thoughts ?? []) as string[]) addLog("thought", "Gemini's reasoning", t);
+      for (const call of (body.calls ?? []) as { name: string; args: Record<string, unknown> }[]) {
+        const { board: next, result } = applyTool(boardRef.current, call.name, call.args);
         boardRef.current = next;
-        const { reason, ...rest } = args;
+        const { reason, ...rest } = call.args;
         addLog(
           result.ok ? "tool" : "error",
           `${call.name}(${Object.entries(rest).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ")})`,
           [typeof reason === "string" ? `Why: ${reason}` : "", result.ok ? "" : String(result.error)].filter(Boolean).join("\n"),
         );
-        return { id: call.id, name: call.name, response: result };
-      });
+      }
       setBoard(boardRef.current);
-      session.current?.sendToolResponse({ functionResponses: responses });
+      if (!body.calls?.length) addLog("info", "No track change", `For: "${text}"`);
+    } catch (err) {
+      // Keep the words so the next round tries them again.
+      pending.current = `${text} ${pending.current}`.slice(-4000);
+      addLog("error", "Sorting into tracks failed", (err as Error).message);
+    } finally {
+      sorting.current = false;
     }
-    for (const id of msg.toolCallCancellation?.ids ?? []) addLog("info", "Gemini cancelled a tool call", id);
-    if (msg.goAway) addLog("info", "Gemini will end this session soon", `Time left: ${msg.goAway.timeLeft ?? "?"}`);
   }
 
   async function connect(withThoughts: boolean): Promise<Session> {
@@ -104,8 +139,12 @@ export function LiveDemo() {
       model: body.model,
       config: {
         responseModalities: [Modality.AUDIO],
-        systemInstruction,
-        tools: [{ functionDeclarations: trackTools }],
+        systemInstruction: liveInstruction,
+        // End a turn soon after the speaker pauses, so the final transcript
+        // arrives sooner.
+        realtimeInputConfig: {
+          automaticActivityDetection: { endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH, silenceDurationMs: 400 },
+        },
         inputAudioTranscription: {},
         outputAudioTranscription: {},
         ...(withThoughts ? { thinkingConfig: { includeThoughts: true } } : {}),
@@ -185,6 +224,7 @@ export function LiveDemo() {
     player.current = null;
     setLevel(0);
     setStatus((st) => (st === "error" ? st : "idle"));
+    void sortPending(); // file whatever was said last
   }
 
   function sendTyped(e: React.FormEvent) {
@@ -193,16 +233,27 @@ export function LiveDemo() {
     if (!text || !session.current) return;
     turn.current.gemini = undefined;
     appendLine("you", `${text} (typed)`);
+    pending.current += ` ${text}`;
     session.current.sendRealtimeInput({ text });
     setTyped("");
   }
 
   function reset() {
     boardRef.current = emptyBoard;
+    pending.current = "";
+    filed.current = "";
     setBoard(emptyBoard);
     setLog([]);
     setLines([]);
   }
+
+  // While listening, sort new words into tracks every two seconds, so tracks
+  // grow while the user is still talking.
+  useEffect(() => {
+    if (status !== "listening") return;
+    const timer = setInterval(() => void sortPending(), 2000);
+    return () => clearInterval(timer);
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mic level ring while listening.
   useEffect(() => {
@@ -217,7 +268,7 @@ export function LiveDemo() {
   }, [status]);
 
   // Close everything if the page is left mid-session.
-  useEffect(() => () => stop(), []);
+  useEffect(() => () => stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const listening = status === "listening";
 
@@ -246,7 +297,7 @@ export function LiveDemo() {
         <p className="text-sm text-zinc-500">
           {status === "idle" && "Tap the mic and think out loud. Gemini sorts what you say into tracks."}
           {status === "connecting" && "Connecting to Gemini Live..."}
-          {listening && (interim ? `Hearing: ${interim}` : "Listening...")}
+          {listening && "Listening..."}
           {status === "error" && "Something went wrong. See the log below, then try again."}
         </p>
         {listening && (
@@ -313,6 +364,7 @@ export function LiveDemo() {
                 {l.text}
               </p>
             ))}
+            {listening && interim && <p className="italic text-zinc-500">{interim}</p>}
           </div>
         </section>
         <section>

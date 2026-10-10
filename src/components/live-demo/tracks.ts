@@ -24,6 +24,11 @@ export const trackTools: FunctionDeclaration[] = [
       properties: {
         title: { type: Type.STRING, description: "2-5 words, in the user's own wording." },
         first_thought: { type: Type.STRING, description: "The thought that started it, quoted or tightly paraphrased." },
+        more_thoughts: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "Any further thoughts from the NEW words that belong in this new track.",
+        },
         reason,
       },
       required: ["title", "first_thought", "reason"],
@@ -80,17 +85,23 @@ export const trackTools: FunctionDeclaration[] = [
   },
 ];
 
-export const systemInstruction = `You are BrainStorm's Deep Thinking listener. The user is thinking out loud.
-Your job is to organise what THEY say into tracks (topics) using the tools, while they talk.
+// For the text model that sorts the transcript into tracks.
+export const trackPrompt = `You sort a person's think-out-loud speech into tracks (topics) while they talk.
+You get the current tracks, what they said just before, and the NEW words. File only the NEW words, using the tools.
 
 Rules:
 - Never invent ideas, suggestions, features or inspiration. Only file the user's own words (quote or tight paraphrase).
-- When a new topic starts, call create_track. When they add to a topic, call add_to_track on that track.
-- Prefer an existing track over a near-duplicate. If they return to an earlier topic, call switch_track first.
+- New topic: create_track (put every NEW thought for it in first_thought / more_thoughts). Same topic: add_to_track.
+- Prefer an existing track over a near-duplicate. If they return to an earlier topic, switch_track, then add_to_track.
 - Use move_thought / edit_thought when they correct themselves; merge_tracks only when they say two topics are the same.
-- Every tool call needs a short "reason" quoting the cue in their speech.
-- Speak very little. A short acknowledgement is fine. If unsure which track they mean, ask one short question like "Are you back on <track>?".
-- Do not answer with your own opinions or ideas unless the user directly asks you a question; then answer briefly.`;
+- Split long speech into separate thoughts, one idea each. Skip filler ("um", "so yeah", "testing").
+- Every call needs a short "reason" quoting the cue in their speech.
+- If the NEW words hold no real thought, make no calls.`;
+
+// For Gemini Live, which now only listens, transcribes and talks back.
+export const liveInstruction = `You are BrainStorm's Deep Thinking listener. The user is thinking out loud and their
+words are being sorted into topics separately. Speak very little: a two- or three-word acknowledgement at most.
+Never offer your own ideas or suggestions. If the user asks you a direct question, answer briefly.`;
 
 type Args = Record<string, unknown>;
 const str = (a: Args, k: string) => (typeof a[k] === "string" ? (a[k] as string).trim() : "");
@@ -114,7 +125,12 @@ export function applyTool(board: Board, name: string, args: Args): { board: Boar
     case "create_track": {
       const id = newId("t");
       const itemId = newId("i");
-      b.tracks.push({ id, title: str(args, "title") || "Untitled", items: [{ id: itemId, text: str(args, "first_thought") }] });
+      const more = Array.isArray(args.more_thoughts) ? args.more_thoughts.filter((t): t is string => typeof t === "string" && !!t.trim()) : [];
+      b.tracks.push({
+        id,
+        title: str(args, "title") || "Untitled",
+        items: [{ id: itemId, text: str(args, "first_thought") }, ...more.map((t) => ({ id: newId("i"), text: t.trim() }))],
+      });
       b.active = id;
       created = { track_id: id, item_id: itemId };
       break;

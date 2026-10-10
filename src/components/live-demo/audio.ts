@@ -2,14 +2,14 @@
 // Gemini Live takes 16 kHz mono 16-bit PCM in and sends 24 kHz PCM back.
 
 // Runs on the audio thread: downsamples the mic to 16 kHz and posts
-// ~100 ms chunks of Int16 PCM back to the page.
+// 50 ms chunks of Int16 PCM back to the page.
 const WORKLET = `
 class PcmCapture extends AudioWorkletProcessor {
   constructor() {
     super();
     this.ratio = sampleRate / 16000;
     this.pos = 0;
-    this.buf = new Int16Array(1600);
+    this.buf = new Int16Array(800);
     this.len = 0;
   }
   process(inputs) {

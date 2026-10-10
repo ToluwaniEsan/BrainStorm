@@ -75,7 +75,7 @@ export function str(b: Record<string, unknown>, key: string, { required = false,
 export function int(b: Record<string, unknown>, key: string) {
   const v = b[key];
   if (v === undefined) return undefined;
-  if (typeof v !== "number" || !Number.isInteger(v) || Math.abs(v) > 2_147_483_647) {
+  if (typeof v !== "number" || !Number.isInteger(v) || v < -2_147_483_648 || v > 2_147_483_647) {
     throw new HttpError(400, `${key} must be a whole number`);
   }
   return v;

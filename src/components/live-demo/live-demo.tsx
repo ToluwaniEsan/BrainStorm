@@ -90,6 +90,8 @@ export function LiveDemo() {
     const wasDone = held.current.done;
     held.current = { audio: [], text: "", done: false };
     gate.current = wasDone ? "idle" : "muted";
+    // The user never heard it, so a request Flash confirms later still needs a nudge.
+    spokeSinceUser.current = false;
     addLog("info", "Muted a reply you didn't ask for", why);
   }
 

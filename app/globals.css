@@ -1,0 +1,140 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --panel: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #e6ecff;
+  --muted: #8fa0c8;
+  --accent: #6ea8ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.spread {
+  justify-content: space-between;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.button,
+button {
+  background: var(--accent);
+  color: #08101f;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.button.secondary,
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  min-width: 280px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.tracks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.track.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.track h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.track ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.track li {
+  margin: 4px 0;
+}
+
+.draft {
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.heard {
+  min-height: 1.5em;
+  font-style: italic;
+}
+
+.log {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.danger {
+  background: #ff6e6e;
+}

@@ -45,16 +45,26 @@ export async function startMic(onChunk: (b64: string) => void): Promise<Mic> {
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
   });
   const ctx = new AudioContext();
-  const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
-  await ctx.audioWorklet.addModule(url);
-  URL.revokeObjectURL(url);
+  try {
+    const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
+    await ctx.audioWorklet.addModule(url);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    stream.getTracks().forEach((t) => t.stop());
+    void ctx.close();
+    throw err;
+  }
   const source = ctx.createMediaStreamSource(stream);
   const node = new AudioWorkletNode(ctx, "pcm-capture");
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 512;
   const samples = new Uint8Array(analyser.fftSize);
   node.port.onmessage = (e: MessageEvent<ArrayBuffer>) => onChunk(toBase64(e.data));
-  source.connect(node);
+  // Some browsers only run a worklet that leads to the speakers, so route it
+  // there through a muted gain.
+  const mute = ctx.createGain();
+  mute.gain.value = 0;
+  source.connect(node).connect(mute).connect(ctx.destination);
   source.connect(analyser);
   return {
     stop() {

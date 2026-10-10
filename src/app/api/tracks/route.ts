@@ -1,6 +1,6 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import { trackItems, tracks } from "@/db/schema";
-import { withUser } from "@/lib/db";
+import { lockForUser, withUser } from "@/lib/db";
 import { api, bool, int, optUuid, readBody, str } from "@/lib/http";
 import { requireUser } from "@/lib/session";
 
@@ -36,7 +36,10 @@ export const POST = api(async (req: Request) => {
     isActive: bool(b, "isActive"),
   };
   const [row] = await withUser(user.sub, async (tx) => {
-    if (values.isActive) await tx.update(tracks).set({ isActive: false });
+    if (values.isActive) {
+      await lockForUser(tx, "active-track");
+      await tx.update(tracks).set({ isActive: false });
+    }
     return tx.insert(tracks).values(values).returning();
   });
   return Response.json(row, { status: 201 });

@@ -4,7 +4,7 @@ import { withUser } from "@/lib/db";
 import { HttpError, api, notFound, uuidParam } from "@/lib/http";
 import { requireUser } from "@/lib/session";
 import { exaContents } from "@/server/exa";
-import { indexText } from "@/server/memory";
+import { indexQuietly } from "@/server/memory";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -17,13 +17,15 @@ export const POST = api(async (_req: Request, { params }: Ctx) => {
   if (!link) notFound("Link not found");
   const page = await exaContents(link.url);
   if (!page?.text) throw new HttpError(422, "Couldn't read any text from that link");
-  return withUser(user.sub, async (tx) => {
-    const [row] = await tx
+  // The snapshot is saved on its own, so a Gemini outage doesn't lose the page.
+  const [row] = await withUser(user.sub, (tx) =>
+    tx
       .update(links)
       .set({ snapshot: page.text, title: link.title ?? page.title ?? null, fetchedAt: new Date() })
       .where(eq(links.id, id))
-      .returning();
-    const chunks = await indexText(tx, { sourceType: "link", sourceTable: "links", sourceId: id }, page.text!);
-    return { ...row, chunks };
-  });
+      .returning(),
+  );
+  if (!row) notFound("Link not found");
+  const indexed = await indexQuietly(user.sub, { sourceType: "link", sourceTable: "links", sourceId: id }, page.text);
+  return { ...row, indexed };
 });

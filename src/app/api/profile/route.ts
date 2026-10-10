@@ -1,5 +1,5 @@
 import { profile } from "@/db/schema";
-import { withUser } from "@/lib/db";
+import { lockForUser, withUser } from "@/lib/db";
 import { api, defined, readBody, str } from "@/lib/http";
 import { requireUser } from "@/lib/session";
 import { indexQuietly } from "@/server/memory";
@@ -20,13 +20,16 @@ export const PUT = api(async (req: Request) => {
     portfolio: str(b, "portfolio"),
     aboutWork: str(b, "aboutWork"),
   });
-  return withUser(user.sub, async (tx) => {
+  const row = await withUser(user.sub, async (tx) => {
+    // The lock keeps two first saves from both inserting a profile row.
+    await lockForUser(tx, "profile");
     const [existing] = await tx.select({ id: profile.id }).from(profile).limit(1);
-    const [row] = existing
+    const [saved] = existing
       ? await tx.update(profile).set({ ...fields, updatedAt: new Date() }).returning()
       : await tx.insert(profile).values(fields).returning();
-    const text = [row.displayName, row.intro, row.portfolio, row.aboutWork].filter(Boolean).join("\n\n");
-    await indexQuietly(tx, { sourceType: "ui", sourceTable: "profile", sourceId: row.id }, text);
-    return row;
+    return saved;
   });
+  const text = [row.displayName, row.intro, row.portfolio, row.aboutWork].filter(Boolean).join("\n\n");
+  await indexQuietly(user.sub, { sourceType: "ui", sourceTable: "profile", sourceId: row.id }, text);
+  return row;
 });

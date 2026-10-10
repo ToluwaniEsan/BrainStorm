@@ -19,12 +19,9 @@ export const POST = api(async (req: Request) => {
     answer: str(b, "answer"),
     themes: strList(b, "themes"),
   };
-  const row = await withUser(user.sub, async (tx) => {
-    const [r] = await tx.insert(reflections).values(values).returning();
-    if (r.answer) {
-      await indexQuietly(tx, { sourceType: "chat", sourceTable: "reflections", sourceId: r.id }, `${r.question}\n\n${r.answer}`);
-    }
-    return r;
-  });
+  const [row] = await withUser(user.sub, (tx) => tx.insert(reflections).values(values).returning());
+  if (row.answer) {
+    await indexQuietly(user.sub, { sourceType: "chat", sourceTable: "reflections", sourceId: row.id }, `${row.question}\n\n${row.answer}`);
+  }
   return Response.json(row, { status: 201 });
 });

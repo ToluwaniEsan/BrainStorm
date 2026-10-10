@@ -47,3 +47,9 @@ export function withUser<T>(sub: string, fn: (tx: Tx) => Promise<T>): Promise<T>
     return fn(tx);
   });
 }
+
+// Serializes one kind of write for the current user until the transaction
+// ends, e.g. so only one track can be made active at a time.
+export async function lockForUser(tx: Tx, key: string) {
+  await tx.execute(dsql`select pg_advisory_xact_lock(hashtext(current_setting('app.sub') || ${key}))`);
+}

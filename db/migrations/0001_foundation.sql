@@ -183,11 +183,12 @@ begin
   foreach t in array tables loop
     execute format('alter table %I.%I enable row level security', s, t);
     execute format('alter table %I.%I force row level security', s, t);
-    execute format('drop policy if exists owner_only on %I.%I', s, t);
-    execute format(
-      'create policy owner_only on %I.%I for all to brainstorm_app
-         using (owner_sub = current_setting(''app.sub'', true))
-         with check (owner_sub = current_setting(''app.sub'', true))', s, t);
+    if not exists (select from pg_policies where schemaname = s and tablename = t and policyname = 'owner_only') then
+      execute format(
+        'create policy owner_only on %I.%I for all to brainstorm_app
+           using (owner_sub = current_setting(''app.sub'', true))
+           with check (owner_sub = current_setting(''app.sub'', true))', s, t);
+    end if;
     execute format('grant select, insert, update, delete on %I.%I to brainstorm_app', s, t);
   end loop;
 

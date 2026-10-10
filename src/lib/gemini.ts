@@ -1,18 +1,9 @@
 import "server-only";
 import { GoogleGenAI } from "@google/genai";
+import { requireEnv } from "./env";
 
 // Shared Gemini client. Importing this from a client component fails the build,
 // which keeps GEMINI_API_KEY out of the browser bundle.
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(
-      `${name} is not set. Add it to .env.local (see .env.example) or to the Vercel project's environment variables.`,
-    );
-  }
-  return value;
-}
 
 let client: GoogleGenAI | undefined;
 

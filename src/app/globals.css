@@ -19,8 +19,23 @@
   }
 }
 
+@keyframes gradientMovement{
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 body {
-  background: var(--background);
+  background: linear-gradient(-45deg, #ff9a9e, #fad0c4, #fad0c4, #ff9a9e);
+  background-size: 400% 400%;
+  animation: gradientMovement 15s ease infinite;
+
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }

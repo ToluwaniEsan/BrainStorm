@@ -53,7 +53,7 @@ async function Home() {
 
   if (!session) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8 text-foreground">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8">
         <h1 className="text-4xl font-semibold">Clutter</h1>
         <p>Your creative helper</p>
         <a className="rounded-md bg-foreground px-5 py-3 text-background" href="/auth/login">
@@ -70,7 +70,7 @@ async function Home() {
   const db = await supabaseCheck(sub, email, name, session.user.email_verified);
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-8 bg-background p-6 text-foreground sm:p-10">
+    <main className="flex min-h-screen flex-col items-center gap-8 bg-background p-6 sm:p-10">
       <header className="flex w-full max-w-6xl items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Welcome to Clutter</h1>

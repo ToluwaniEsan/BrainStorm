@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  bigint, boolean, date, index, integer, pgTable, text, timestamp, uuid, vector,
+  type AnyPgColumn, bigint, boolean, date, index, integer, pgTable, text, timestamp, uuid, vector,
 } from "drizzle-orm/pg-core";
 
 // Typed view of the tables app.provision_user() creates in every user's schema
@@ -25,7 +25,7 @@ export const profile = pgTable("profile", {
 
 export const projects = pgTable("projects", {
   id: id(), ownerSub: ownerSub(),
-  parentId: uuid("parent_id"),
+  parentId: uuid("parent_id").references((): AnyPgColumn => projects.id, { onDelete: "set null" }),
   title: text("title").notNull(), description: text("description"),
   status: text("status").notNull().default("active"),
   createdAt: createdAt(), updatedAt: updatedAt(),

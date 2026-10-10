@@ -30,7 +30,7 @@ export async function GET() {
   await connection();
   const [database, storage, gemini] = await Promise.all([
     probe(env("DATABASE_URL"), async () => {
-      const [row] = await getSql()`select current_user as role, to_regprocedure('app.provision_user(text)') is not null as ready`;
+      const [row] = await getSql()`select current_user as role, to_regprocedure('app.register_user(text,text,text,boolean)') is not null as ready`;
       if (row.role !== "brainstorm_app") throw new Error("wrong role");
       if (!row.ready) throw new Error("not migrated");
     }),

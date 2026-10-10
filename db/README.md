@@ -64,3 +64,21 @@ npm run check:storage  # secret key works, uploads bucket exists and is private
 for every query. It sets `app.sub` and `search_path` for that transaction only.
 Rows another user tries to read come back empty, and inserts into someone
 else's schema are rejected.
+
+## Querying with Drizzle
+
+Drizzle is already wired up; there's no separate Drizzle key or `drizzle-kit push` step.
+Typed tables live in `src/db/schema.ts` and always run inside `withUser`:
+
+```ts
+import { withUser } from "@/lib/db";
+import { projects } from "@/db/schema";
+
+const rows = await withUser(session.user.sub, (tx) =>
+  tx.insert(projects).values({ title: "New idea" }).returning(),
+);
+```
+
+Schema changes go in a new `db/migrations/000N_*.sql` (and in `app.provision_user`),
+then the matching change in `src/db/schema.ts`. Don't use `drizzle-kit push`: it would
+create tables in `public` instead of each user's own schema.

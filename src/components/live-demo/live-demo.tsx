@@ -158,9 +158,14 @@ export function LiveDemo() {
       }
       session.current = sess;
       addLog("info", "Connected to Gemini Live. Start talking.");
-      mic.current = await startMic((data) =>
+      const m = await startMic((data) =>
         session.current?.sendRealtimeInput({ audio: { data, mimeType: "audio/pcm;rate=16000" } }),
       );
+      if (!wanted.current) {
+        m.stop();
+        return;
+      }
+      mic.current = m;
       setStatus("listening");
     } catch (err) {
       addLog("error", "Could not start", (err as Error).message);

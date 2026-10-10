@@ -11,7 +11,11 @@ function stableHostRedirect(request: NextRequest) {
   const stable = process.env.VERCEL_BRANCH_URL;
   const host = request.headers.get("host");
   if (!stable || !host || host === stable || !host.endsWith(".vercel.app")) return null;
-  const url = new URL(request.nextUrl.pathname + request.nextUrl.search, `https://${stable}`);
+  // Set the path on a URL that already has the stable host, so a path like
+  // "//other.site" can't swap in a different host.
+  const url = new URL(`https://${stable}`);
+  url.pathname = request.nextUrl.pathname;
+  url.search = request.nextUrl.search;
   return NextResponse.redirect(url, 308);
 }
 

@@ -20,8 +20,7 @@ export async function loadSessions(tx: Tx, only?: string): Promise<StudioSession
     .select()
     .from(liveSessions)
     .where(only ? eq(liveSessions.id, only) : undefined)
-    .orderBy(desc(liveSessions.startedAt))
-    .limit(100);
+    .orderBy(desc(liveSessions.startedAt));
   if (!sessions.length) return [];
   const ids = sessions.map((s) => s.id);
   const items = await tx

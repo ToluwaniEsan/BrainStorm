@@ -33,7 +33,6 @@ body {
 }
 
 .ball::before {
-  z-index: -1;
   inset: -15%;
   content: "";
   pointer-events: none;

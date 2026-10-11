@@ -18,7 +18,7 @@
   }
 }
 
-@keyframes gradientMovement{
+@keyframes gradientMovement {
   0% {
     background-position: 0% 50%;
   }
@@ -31,10 +31,39 @@
 }
 
 main {
-  background: rgb(255, 207, 172);
-  background-size: 400% 400%;
-
+  position: relative;
+  isolation: isolate;
   color: rgb(191, 18, 18);
   font-family: Arial, Helvetica, sans-serif;
 }
 
+main::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(
+    -45deg,
+    blue,
+    orange,
+    purple,
+    indigo,
+    magenta,
+    teal,
+    lightblue,
+    yellow,
+    darkred
+  );
+  background-size: 400% 400%;
+  filter: blur(32px);
+  opacity: 0.6;
+  animation: gradientMovement 25s ease-in infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main::before {
+    animation: none;
+    background-position: 50% 50%;
+  }
+}

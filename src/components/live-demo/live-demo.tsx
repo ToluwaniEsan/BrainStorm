@@ -604,7 +604,7 @@ export function LiveDemo() {
       </div>
 
       <div className="c-stage">
-        <Wave level={level} on={live} />
+        <Wave level={level} on={live} compact={phase === "tracks" || phase === "ended"} />
         <div className="c-under">
           <p className="c-caption" aria-live="polite">{live && caption}</p>
           {live && (

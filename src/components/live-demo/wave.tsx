@@ -10,15 +10,21 @@ const GATHER_MS = 1400;
 // across the middle of the screen with soft, tapered ends. They swell with
 // the mic level. `level` is read every frame (0..1), so it is a ref, not a
 // prop that re-renders. `on` eases the wave in (after the bubbles gather) or
-// lets it settle flat and fade.
-export function Wave({ level, on }: { level: React.RefObject<number>; on: boolean }) {
+// lets it settle flat and fade. `compact` shrinks it as it rides to the top;
+// the canvas keeps its size and the wave eases smaller inside it, so the move
+// never forces a resize.
+export function Wave({ level, on, compact }: { level: React.RefObject<number>; on: boolean; compact: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const shown = useRef(on);
   const since = useRef(0);
+  const small = useRef(compact);
   useEffect(() => {
     shown.current = on;
     since.current = performance.now();
   }, [on]);
+  useEffect(() => {
+    small.current = compact;
+  }, [compact]);
 
   useEffect(() => {
     const el = canvas.current;
@@ -30,6 +36,7 @@ export function Wave({ level, on }: { level: React.RefObject<number>; on: boolea
     let grow = 0;
     let smooth = 0;
     let phase = 0;
+    let size = small.current ? 0.6 : 1;
     let last = performance.now();
 
     const draw = (now: number) => {
@@ -40,6 +47,8 @@ export function Wave({ level, on }: { level: React.RefObject<number>; on: boolea
       grow += (target - grow) * Math.min(1, dt * (still ? 60 : 1.6));
       smooth += (Math.min(1, (level.current ?? 0) * 2.2) - smooth) * Math.min(1, dt * 4);
       if (!still) phase += dt * (1.2 + smooth * 1.6);
+      // Same 1.8 s ease as the stage's move to the top.
+      size += ((small.current ? 0.6 : 1) - size) * Math.min(1, dt * (still ? 60 : 2.4));
 
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       const w = el.clientWidth;
@@ -56,7 +65,7 @@ export function Wave({ level, on }: { level: React.RefObject<number>; on: boolea
         // Not edge to edge: about two thirds of the screen, wider as it eases in.
         const span = Math.min(w * 0.72, 900) * (0.35 + eased * 0.65);
         const x0 = (w - span) / 2;
-        const amp = h * 0.36 * (0.18 + smooth * 0.82) * eased;
+        const amp = h * 0.36 * size * (0.18 + smooth * 0.82) * eased;
         ctx.strokeStyle = ink;
         ctx.lineCap = "round";
         // Main line plus two fainter echoes, like a classic voice wave.

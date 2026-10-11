@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BrainStorm",
+  title: "Clutter",
   description: "A space to organize and develop your ideas.",
 };
 

@@ -11,13 +11,13 @@
 
 @keyframes gradientMovement {
 0% {
-background-position: 0% 0%;
+background-position: 0% 50%;
 }
 50% {
-background-position: 100% 100%;
+background-position: 100% 50%;
 }
 100% {
-background-position: 0% 0%;
+background-position: 0% 50%;
 }
 }
 
@@ -125,36 +125,14 @@ overflow: hidden;
 pointer-events: none;
 }
 
-.lava-lamp__float {
+.lava-lamp__ball {
 position: absolute;
+display: block;
 width: clamp(9rem, 24vw, 22rem);
 aspect-ratio: 1;
-animation: bubbleBounceOne 32s ease-in-out infinite;
-}
-
-.lava-lamp__ball {
-display: block;
-width: 100%;
-height: 100%;
 border-radius: 50%;
-background-image: var(--ball-gradient);
-background-position: 0% 0%;
-background-size: 250% 250%;
-filter: blur(10px);
-opacity: 0.65;
-  animation: gradientMovement 18s infinite;
-  animation: gradientMovement 18s linear infinite;
-}
-
-.lava-lamp__float--one {
-top: 4%;
-left: 2%;
-animation: bubbleBounceOne 32s ease-in-out infinite;
-}
-
-.lava-lamp__ball--one {
-  --ball-gradient: radial-gradient(
-  --ball-gradient: linear-gradient(
+background: linear-gradient(
+-45deg,
 blue,
 orange,
 purple,
@@ -165,151 +143,61 @@ lightblue,
 yellow,
 darkred
 );
-animation-duration: 18s;
-animation-delay: -2s;
+background-size: 300% 300%;
+  filter: blur(20px);
+  filter: blur(10px);
+opacity: 0.65;
+animation:
+gradientMovement 25s ease-in infinite,
+bubbleBounceOne 32s ease-in-out infinite;
 }
 
-/*
-
-.lava-lamp__float--two {
- top: 5%;
- left: 58%;
- animation: bubbleBounceTwo 38s ease-in-out infinite;
+.lava-lamp__ball--one {
+top: 4%;
+left: 2%;
 }
 
 .lava-lamp__ball--two {
- --ball-gradient: linear-gradient(
-   -45deg,
-   lightblue,
-   blue,
-   orange,
-   magenta,
-   darkred,
-   yellow,
-   indigo,
-   purple,
-   teal
- );
- animation-duration: 21s;
- animation-delay: -7s;
-}
-
-.lava-lamp__float--three {
- top: 43%;
- left: 24%;
- animation: bubbleBounceThree 35s ease-in-out infinite;
+top: 5%;
+left: 58%;
+animation-name: gradientMovement, bubbleBounceTwo;
+animation-duration: 25s, 38s;
 }
 
 .lava-lamp__ball--three {
- --ball-gradient: linear-gradient(
-   -45deg,
-   blue,
-   orange,
-   purple,
-   indigo,
-   magenta,
-   teal,
-   lightblue,
-   yellow,
-   darkred
- );
- animation-duration: 24s;
- animation-delay: -11s;
-}
-
-.lava-lamp__float--four {
- top: 58%;
- left: 72%;
- animation: bubbleBounceFour 41s ease-in-out infinite;
+top: 43%;
+left: 24%;
+animation-name: gradientMovement, bubbleBounceThree;
+animation-duration: 25s, 35s;
 }
 
 .lava-lamp__ball--four {
- --ball-gradient: linear-gradient(
-   -45deg,
-   blue,
-   orange,
-   purple,
-   indigo,
-   magenta,
-   teal,
-   lightblue,
-   yellow,
-   darkred
- );
- animation-duration: 20s;
- animation-delay: -5s;
-}
-
-.lava-lamp__float--five {
- top: 72%;
- left: 6%;
- animation: bubbleBounceFive 37s ease-in-out infinite;
+top: 58%;
+left: 72%;
+animation-name: gradientMovement, bubbleBounceFour;
+animation-duration: 25s, 41s;
 }
 
 .lava-lamp__ball--five {
- --ball-gradient: linear-gradient(
-   -45deg,
-   blue,
-   orange,
-   purple,
-   indigo,
-   magenta,
-   teal,
-   lightblue,
-   yellow,
-   darkred
- );
- animation-duration: 23s;
- animation-delay: -14s;
-}
-
-.lava-lamp__float--six {
- top: 20%;
- left: 40%;
- animation: bubbleBounceSix 39s ease-in-out infinite;
+top: 72%;
+left: 6%;
+animation-name: gradientMovement, bubbleBounceFive;
+animation-duration: 25s, 37s;
 }
 
 .lava-lamp__ball--six {
- --ball-gradient: linear-gradient(
-   -45deg,
-   blue,
-   orange,
-   purple,
-   indigo,
-   magenta,
-   teal,
-   lightblue,
-   yellow,
-   darkred
- );
- animation-duration: 19s;
- animation-delay: -9s;
-}
-
-.lava-lamp__float--seven {
- top: 80%;
- left: 80%;
- animation: bubbleBounceSeven 36s ease-in-out infinite;
+top: 20%;
+left: 40%;
+animation-name: gradientMovement, bubbleBounceSix;
+animation-duration: 25s, 39s;
 }
 
 .lava-lamp__ball--seven {
- --ball-gradient: linear-gradient(
-   -45deg,
-   blue,
-   orange,
-   purple,
-   indigo,
-   magenta,
-   teal,
-   lightblue,
-   yellow,
-   darkred
- );
- animation-duration: 26s;
- animation-delay: -17s;
+top: 80%;
+left: 80%;
+animation-name: gradientMovement, bubbleBounceSeven;
+animation-duration: 25s, 36s;
 }
-
-*/
 
 main {
 position: relative;
@@ -320,7 +208,6 @@ font-family: Arial, Helvetica, sans-serif;
 }
 
 @media (prefers-reduced-motion: reduce) {
-.lava-lamp__float,
 .lava-lamp__ball {
 animation: none;
 }

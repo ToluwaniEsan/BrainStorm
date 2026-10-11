@@ -1,8 +1,10 @@
+import { after } from "next/server";
 import { profile } from "@/db/schema";
 import { lockForUser, withUser } from "@/lib/db";
-import { api, defined, readBody, str } from "@/lib/http";
+import { api, bool, defined, readBody, str } from "@/lib/http";
 import { requireUser } from "@/lib/session";
 import { indexQuietly } from "@/server/memory";
+import { refreshLater } from "@/server/understanding";
 
 export const GET = api(async () => {
   const user = await requireUser();
@@ -19,6 +21,9 @@ export const PUT = api(async (req: Request) => {
     intro: str(b, "intro"),
     portfolio: str(b, "portfolio"),
     aboutWork: str(b, "aboutWork"),
+    // false: BrainStorm stops learning new things from conversations and only
+    // uses what the user gives it directly.
+    learningEnabled: bool(b, "learningEnabled"),
   });
   const row = await withUser(user.sub, async (tx) => {
     // The lock keeps two first saves from both inserting a profile row.
@@ -31,5 +36,8 @@ export const PUT = api(async (req: Request) => {
   });
   const text = [row.displayName, row.intro, row.portfolio, row.aboutWork].filter(Boolean).join("\n\n");
   await indexQuietly(user.sub, { sourceType: "ui", sourceTable: "profile", sourceId: row.id }, text);
+  if (fields.displayName !== undefined || fields.intro !== undefined || fields.portfolio !== undefined || fields.aboutWork !== undefined) {
+    after(() => refreshLater(user.sub));
+  }
   return row;
 });

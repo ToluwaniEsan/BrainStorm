@@ -94,14 +94,19 @@ signed-in user's own schema. The first call provisions that schema.
 | --- | --- | --- |
 | `/api/health` | GET | Public. Which services are configured and reachable (no values). |
 | `/api/me` | GET | Signed-in user and their profile. |
-| `/api/profile` | GET, PUT | Read or save the profile. |
+| `/api/profile` | GET, PUT | Read or save the profile (including `learningEnabled`). |
 | `/api/projects`, `/api/projects/:id`, `/api/projects/:id/tasks`, `/api/tasks/:id` | CRUD | Projects, sub-projects and tasks. |
 | `/api/tracks`, `/api/tracks/:id`, `/api/tracks/:id/items`, `/api/track-items/:id` | CRUD | Deep Thinking tracks and their items (move an item by PATCHing `trackId`). |
 | `/api/live/token` | POST | One-use Gemini Live token for the browser socket. |
+| `/api/live/context` | GET | Gemini Live instructions for this user, built from what Clutter understands about them. |
+| `/api/live/tracks` | POST | Gemini Flash sorts new transcript text into track changes and says if the user asked for a reply. |
+| `/api/live/learn` | POST | Saves lasting facts about the user from what they said (skipped when learning is off). |
+| `/api/facts`, `/api/facts/:id` | GET, DELETE | What Clutter learned from conversations; the user can forget any of it. |
+| `/api/profile/understanding` | POST | Rebuilds the summary of the user from their profile, links, files and learned facts. |
 | `/api/live/sessions`, `/api/live/sessions/:id`, `/api/live/sessions/:id/transcripts` | GET, POST, PATCH | Voice sessions and their text transcripts (no audio is stored). |
 | `/api/memory`, `/api/memory/search?q=` | POST, GET | Index text into memory; semantic search over the user's own memory. |
 | `/api/search` | POST | Exa search, only when the user is stuck and asks (`query` + `triggerText`). |
-| `/api/links`, `/api/links/:id`, `/api/links/:id/fetch` | GET, POST, DELETE | Saved links; fetch reads the page via Exa and indexes it. |
-| `/api/files`, `/api/files/:id` | GET, POST, DELETE | Uploads (10 MB max) to private Storage; text is extracted and indexed. |
+| `/api/links`, `/api/links/:id`, `/api/links/:id/fetch` | GET, POST, DELETE | Saved links; fetch reads GitHub repos via the GitHub API and other pages via Exa, then indexes them. |
+| `/api/files`, `/api/files/:id` | GET, POST, DELETE | Uploads (10 MB max) to private Storage; text is extracted (PDF, Word, text, images) and indexed. |
 | `/api/reflections`, `/api/achievements` | GET, POST | The user's own answers and past wins. |
 | `/api/account` | DELETE | Deletes the user's files, schema and registry row. |

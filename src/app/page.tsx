@@ -4,6 +4,7 @@ import "./globals.css";
 import { profile } from "@/db/schema";
 import { auth0 } from "@/lib/auth0";
 import { LiveDemo } from "@/components/live-demo/live-demo";
+import { Nav } from "@/components/nav";
 import { EmailInUseError, provisionUser, withUser, type Identity } from "@/lib/db";
 
 // Test page. Signed out: a Log in button that goes to Auth0. Signed in: the
@@ -71,15 +72,11 @@ async function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-8 bg-background p-6 sm:p-10">
-      <header className="flex w-full max-w-6xl items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Welcome to Clutter</h1>
-          <p className="text-sm text-zinc-500">Signed in as {name ?? email ?? sub}</p>
-        </div>
-        <a className="text-sm underline" href="/auth/logout">
-          Log out
-        </a>
-      </header>
+      <Nav current="/" />
+      <div className="w-full max-w-6xl">
+        <h1 className="text-2xl font-semibold">Welcome to Clutter</h1>
+        <p className="text-sm text-zinc-500">Signed in as {name ?? email ?? sub}</p>
+      </div>
       <LiveDemo />
       <details className="w-full max-w-6xl text-sm">
         <summary className="cursor-pointer text-zinc-500">

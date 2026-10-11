@@ -25,13 +25,27 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <div className="lava-lamp" aria-hidden="true">
-          <span className="lava-lamp__ball lava-lamp__ball--one" />
-          <span className="lava-lamp__ball lava-lamp__ball--two" />
-          <span className="lava-lamp__ball lava-lamp__ball--three" />
-          <span className="lava-lamp__ball lava-lamp__ball--four" />
-          <span className="lava-lamp__ball lava-lamp__ball--five" />
-          <span className="lava-lamp__ball lava-lamp__ball--six" />
-          <span className="lava-lamp__ball lava-lamp__ball--seven" />
+          <div className="lava-lamp__float lava-lamp__float--one">
+            <span className="lava-lamp__ball lava-lamp__ball--one" />
+          </div>
+          <div className="lava-lamp__float lava-lamp__float--two">
+            <span className="lava-lamp__ball lava-lamp__ball--two" />
+          </div>
+          <div className="lava-lamp__float lava-lamp__float--three">
+            <span className="lava-lamp__ball lava-lamp__ball--three" />
+          </div>
+          <div className="lava-lamp__float lava-lamp__float--four">
+            <span className="lava-lamp__ball lava-lamp__ball--four" />
+          </div>
+          <div className="lava-lamp__float lava-lamp__float--five">
+            <span className="lava-lamp__ball lava-lamp__ball--five" />
+          </div>
+          <div className="lava-lamp__float lava-lamp__float--six">
+            <span className="lava-lamp__ball lava-lamp__ball--six" />
+          </div>
+          <div className="lava-lamp__float lava-lamp__float--seven">
+            <span className="lava-lamp__ball lava-lamp__ball--seven" />
+          </div>
         </div>
         {children}
       </body>

@@ -125,25 +125,30 @@ body {
   pointer-events: none;
 }
 
-.lava-lamp__ball {
+.lava-lamp__float {
   position: absolute;
-  display: block;
   width: clamp(9rem, 24vw, 22rem);
   aspect-ratio: 1;
+  animation: bubbleBounceOne 32s ease-in-out infinite;
+}
+
+.lava-lamp__ball {
+  display: block;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  
   background-size: 300% 300%;
   filter: blur(10px);
   opacity: 0.65;
-  animation:
-    gradientMovement 25s ease-in infinite,
-    bubbleBounceOne 32s ease-in-out infinite;
+  animation: gradientMovement 25s ease-in infinite;
+}
+
+.lava-lamp__float--one {
+  top: 4%;
+  left: 2%;
 }
 
 .lava-lamp__ball--one {
-  top: 4%;
-  left: 2%;
-
   background: linear-gradient(
     -45deg,
     blue,
@@ -158,12 +163,14 @@ body {
   );
 }
 
-.lava-lamp__ball--two {
+.lava-lamp__float--two {
   top: 5%;
   left: 58%;
-  animation-name: gradientMovement, bubbleBounceTwo;
-  animation-duration: 25s, 38s;
+  animation-name: bubbleBounceTwo;
+  animation-duration: 38s;
+}
 
+.lava-lamp__ball--two {
   background: linear-gradient(
     -45deg,    
     darkred,
@@ -178,9 +185,14 @@ body {
   );
 }
 
-.lava-lamp__ball--three {
+.lava-lamp__float--three {
   top: 43%;
   left: 24%;
+  animation-name: bubbleBounceThree;
+  animation-duration: 35s;
+}
+
+.lava-lamp__ball--three {
   background: linear-gradient(
     -45deg,
     blue,
@@ -193,13 +205,16 @@ body {
     yellow,
     darkred
   );
-  animation-name: gradientMovement, bubbleBounceThree;
-  animation-duration: 25s, 35s;
+}
+
+.lava-lamp__float--four {
+  top: 58%;
+  left: 72%;
+  animation-name: bubbleBounceFour;
+  animation-duration: 41s;
 }
 
 .lava-lamp__ball--four {
-  top: 58%;
-  left: 72%;
   background: linear-gradient(
     -45deg,
     blue,
@@ -216,9 +231,14 @@ body {
   animation-duration: 25s, 41s;
 }
 
-.lava-lamp__ball--five {
+.lava-lamp__float--five {
   top: 72%;
   left: 6%;
+  animation-name: bubbleBounceFive;
+  animation-duration: 37s;
+}
+
+.lava-lamp__ball--five {
   background: linear-gradient(
     -45deg,
     blue,
@@ -235,9 +255,14 @@ body {
   animation-duration: 25s, 37s;
 }
 
-.lava-lamp__ball--six {
+.lava-lamp__float--six {
   top: 20%;
   left: 40%;
+  animation-name: bubbleBounceSix;
+  animation-duration: 39s;
+}
+
+.lava-lamp__ball--six {
   background: linear-gradient(
     -45deg,
     blue,
@@ -254,9 +279,14 @@ body {
   animation-duration: 25s, 39s;
 }
 
-.lava-lamp__ball--seven {
+.lava-lamp__float--seven {
   top: 80%;
   left: 80%;
+  animation-name: bubbleBounceSeven;
+  animation-duration: 36s;
+}
+
+.lava-lamp__ball--seven {
   background: linear-gradient(
     -45deg,
     blue,
@@ -282,6 +312,7 @@ main {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .lava-lamp__float,
   .lava-lamp__ball {
     animation: none;
   }

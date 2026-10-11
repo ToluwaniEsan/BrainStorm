@@ -46,6 +46,55 @@ function loadEditor(clientId: string): Promise<Editor> {
   return ready;
 }
 
+// The editor is added to <body> on top of the page, but the frosted nav and
+// panels still showed through it. While it's open, hide everything that was
+// on the page before it (only once Adobe has actually added its own nodes),
+// and bring the page back once Adobe's nodes are removed or no longer shown,
+// or when the returned restore() is called.
+function coverPage(onRestored: () => void): () => void {
+  const before = new Set(Array.from(document.body.children));
+  const added = new Set<Element>();
+  const hidden: HTMLElement[] = [];
+  let done = false;
+  let seen = false;
+  const restore = () => {
+    if (done) return;
+    done = true;
+    observer.disconnect();
+    clearInterval(timer);
+    for (const el of hidden.splice(0)) {
+      el.style.removeProperty("visibility");
+      el.inert = false;
+    }
+    onRestored();
+  };
+  const hide = () => {
+    for (const el of before) {
+      if (el instanceof HTMLElement && el.tagName !== "SCRIPT" && el.isConnected) {
+        el.style.visibility = "hidden";
+        el.inert = true;
+        hidden.push(el);
+      }
+    }
+  };
+  const observer = new MutationObserver((records) => {
+    for (const r of records) {
+      r.addedNodes.forEach((n) => n instanceof Element && !before.has(n) && added.add(n));
+      r.removedNodes.forEach((n) => n instanceof Element && added.delete(n));
+    }
+    if (added.size > 0 && hidden.length === 0) hide();
+  });
+  observer.observe(document.body, { childList: true });
+  // Adobe may hide its editor rather than remove it, so also check it's still on screen.
+  const timer = setInterval(() => {
+    if (hidden.length === 0) return;
+    const showing = Array.from(added).some((el) => el.isConnected && el.getClientRects().length > 0);
+    if (showing) seen = true;
+    else if (seen) restore();
+  }, 500);
+  return restore;
+}
+
 const extFor = (type: string) => (type.includes("jpeg") ? "jpg" : type.split("/")[1] || "png");
 
 export function AdobeExpressButton({
@@ -56,6 +105,8 @@ export function AdobeExpressButton({
   onError: (err: unknown) => void;
 }) {
   const [opening, setOpening] = useState(false);
+  // True from opening the editor until it closes; Adobe refuses a second create meanwhile.
+  const [editing, setEditing] = useState(false);
   // Callbacks are captured when the editor opens; read the latest handlers through a ref.
   const handlers = useRef({ onDesign, onError });
   useEffect(() => {
@@ -66,14 +117,21 @@ export function AdobeExpressButton({
 
   const open = async () => {
     setOpening(true);
+    let closed = () => setEditing(false);
     try {
       const editor = await loadEditor(CLIENT_ID);
+      setEditing(true);
+      closed = coverPage(() => setEditing(false));
       editor.create(
         {},
         {
           callbacks: {
-            onCancel: () => {},
-            onError: (err: unknown) => handlers.current.onError(new Error(`Adobe Express: ${String(err)}`)),
+            onCancel: closed,
+            onError: (err: unknown) => {
+              closed();
+              handlers.current.onError(new Error(`Adobe Express: ${String(err)}`));
+            },
+            // The editor may stay open after saving; coverPage notices when it closes.
             onPublish: async (_intent: unknown, params: PublishParams) => {
               try {
                 const asset = params.asset?.[0];
@@ -94,6 +152,7 @@ export function AdobeExpressButton({
         ],
       );
     } catch (err) {
+      closed();
       handlers.current.onError(err);
     } finally {
       setOpening(false);
@@ -101,7 +160,7 @@ export function AdobeExpressButton({
   };
 
   return (
-    <button type="button" className="c-btn" style={{ marginTop: 8 }} disabled={disabled || opening} onClick={() => void open()}>
+    <button type="button" className="c-btn" style={{ marginTop: 8 }} disabled={disabled || opening || editing} onClick={() => void open()}>
       {opening ? "Opening Adobe Express..." : "Design in Adobe Express"}
     </button>
   );

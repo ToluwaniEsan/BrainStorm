@@ -153,15 +153,15 @@ body {
 
 .lava-lamp__ball--one {
   --ball-gradient: radial-gradient(
-    blue 100%,
-    orange 100%,
-    purple 100%,
-    indigo 100%,
-    magenta 100%,
-    teal 100%,
-    lightblue 100%,
-    yellow 100%,
-    darkred 100%
+    blue,
+    orange,
+    purple,
+    indigo,
+    magenta,
+    teal,
+    lightblue,
+    yellow,
+    darkred
   );
   animation-duration: 18s;
   animation-delay: -2s;

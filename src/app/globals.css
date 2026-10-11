@@ -167,6 +167,8 @@ body {
   animation-delay: -2s;
 }
 
+/*
+
 .lava-lamp__float--two {
   top: 5%;
   left: 58%;
@@ -304,6 +306,8 @@ body {
   animation-duration: 26s;
   animation-delay: -17s;
 }
+
+*/
 
 main {
   position: relative;

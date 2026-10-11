@@ -9,6 +9,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
+@property --radius {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
 @keyframes gradientMovement {
   0% {
     background-position: 50% 50%;
@@ -20,6 +26,15 @@
   100% {
     background-position: 80% 20%;
     --radius: 100%;
+  }
+}
+
+@keyframes gradientExpansion {
+  from {
+    --radius: 0px;
+  }
+  to {
+    --radius: 50cqi;
   }
 }
 
@@ -129,6 +144,7 @@ body {
 
 .lava-lamp__float {
   position: absolute;
+  container-type: inline-size;
   width: clamp(9rem, 24vw, 22rem);
   aspect-ratio: 1;
   animation: bubbleBounceOne 32s ease-in-out infinite;
@@ -155,19 +171,19 @@ body {
 
 .lava-lamp__ball--one {
   --ball-gradient: radial-gradient(
-    circle at center,
-    blue,
-    orange,
-    purple,
-    indigo,
-    magenta,
-    teal,
-    lightblue,
-    yellow,
-    darkred
+    circle var(--radius) at center,
+    blue 0%,
+    orange 12.5%,
+    purple 25%,
+    indigo 37.5%,
+    magenta 50%,
+    teal 62.5%,
+    lightblue 75%,
+    yellow 87.5%,
+    darkred 96%,
+    transparent 100%
   );
-  animation-duration: 18s;
-  animation-delay: -2s;
+  animation: gradientExpansion 12s ease-in-out infinite alternate;
 }
 
 /*

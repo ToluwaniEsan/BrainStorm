@@ -21,8 +21,38 @@ function when(s: Session) {
   return `${day}, ${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}${mins ? ` · ${mins} min` : ""}`;
 }
 
-const titleOf = (s: Session) =>
-  s.tracks.length ? s.tracks.slice(0, 2).map((t) => t.title).join(" and ") + (s.tracks.length > 2 ? " and more" : "") : "Untitled session";
+// Named after its first tracks, or failing that what was first said.
+function titleOf(s: Session) {
+  if (s.tracks.length) return s.tracks.slice(0, 2).map((t) => t.title).join(" and ") + (s.tracks.length > 2 ? " and more" : "");
+  const first = s.lines.find((l) => l.who === "you")?.text.trim();
+  if (!first) return "Untitled session";
+  const words = first.split(/\s+/);
+  return words.slice(0, 8).join(" ") + (words.length > 8 ? "..." : "");
+}
+
+// A session as plain text, for downloading.
+function asText(s: Session) {
+  const out = [titleOf(s), when(s), ""];
+  if (s.tracks.length) {
+    out.push("TRACKS");
+    for (const t of s.tracks) out.push(`\n${t.title}`, ...t.items.map((i) => `  - ${i}`));
+    out.push("");
+  }
+  if (s.lines.length) {
+    out.push("WHAT WAS SAID", ...s.lines.map((l) => `${l.who === "you" ? "You" : "Clutter"}: ${l.text}`));
+  }
+  return out.join("\n");
+}
+
+function download(name: string, text: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+const fileDate = (s: Session) => new Date(s.startedAt).toISOString().slice(0, 16).replace(/[T:]/g, "-");
 
 // Wraps every match of the search in <mark>.
 function Hit({ text, q }: { text: string; q: string }) {
@@ -94,6 +124,17 @@ export function Studio() {
   return (
     <>
       {error && <p className="c-status error">{error}</p>}
+      <div className="c-row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
+        <p className="c-note">
+          {sessions.length} discussion{sessions.length === 1 ? "" : "s"} saved
+        </p>
+        <button
+          className="c-btn ghost small"
+          onClick={() => download(`clutter-all-discussions-${new Date().toISOString().slice(0, 10)}.txt`, sessions.map(asText).join("\n\n==========\n\n"))}
+        >
+          Download all
+        </button>
+      </div>
       <div className="c-studio">
         <div className="c-panel">
           <label className="c-search">
@@ -181,6 +222,9 @@ export function Studio() {
               <a className="c-btn" href={`/?session=${current.id}`}>
                 Pick this back up
               </a>
+              <button className="c-btn ghost" onClick={() => download(`clutter-${fileDate(current)}.txt`, asText(current))}>
+                Download
+              </button>
               {confirmDelete ? (
                 <>
                   <button className="c-btn danger" onClick={() => void remove(current.id)}>

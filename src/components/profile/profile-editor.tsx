@@ -61,6 +61,10 @@ export function ProfileEditor({ authName, email }: { authName: string; email: st
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
+  // Profile photo: shown when /api/profile/avatar has one; `photo` bumps to reload it.
+  const [photo, setPhoto] = useState(1);
+  const [hasPhoto, setHasPhoto] = useState(true);
+
   const report = (err: unknown) => setMessage({ kind: "error", text: err instanceof Error ? err.message : String(err) });
 
   useEffect(() => {
@@ -143,6 +147,21 @@ export function ProfileEditor({ authName, email }: { authName: string; email: st
       setFiles((fs) => fs.filter((x) => x.id !== id));
     });
 
+  const uploadPhoto = (file: File) =>
+    run("photo", async () => {
+      const data = new FormData();
+      data.append("file", file);
+      await call("/api/profile/avatar", { method: "PUT", body: data });
+      setHasPhoto(true);
+      setPhoto((v) => v + 1);
+    }, "Profile photo updated.");
+
+  const removePhoto = () =>
+    run("photo", async () => {
+      await call("/api/profile/avatar", { method: "DELETE" });
+      setHasPhoto(false);
+    });
+
   const removeFact = (id: string) =>
     run(`delfact-${id}`, async () => {
       await call(`/api/facts/${id}`, { method: "DELETE" });
@@ -171,10 +190,38 @@ export function ProfileEditor({ authName, email }: { authName: string; email: st
   return (
     <div>
       <div className="c-profile-head">
-        <div className="c-avatar" aria-hidden="true">{(shownName || "?").trim().charAt(0).toUpperCase()}</div>
+        <div className="c-avatar-wrap">
+          <div className="c-avatar">
+            {hasPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element -- private, per-user image from our own API
+              <img key={photo} src={`/api/profile/avatar?v=${photo}`} alt="Your profile photo" onError={() => setHasPhoto(false)} />
+            ) : (
+              <span aria-hidden="true">{(shownName || "?").trim().charAt(0).toUpperCase()}</span>
+            )}
+          </div>
+          <label className="c-avatar-edit" title="Upload a profile photo">
+            {busy === "photo" ? "..." : "Edit"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label="Upload a profile photo"
+              disabled={busy === "photo"}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void uploadPhoto(f);
+              }}
+            />
+          </label>
+        </div>
         <div className="c-who">
           <b>{shownName || "Your profile"}</b>
           <span>{email}</span>
+          {hasPhoto && (
+            <button className="c-link" style={{ display: "block", marginTop: 4 }} disabled={!!busy} onClick={() => void removePhoto()}>
+              Remove photo
+            </button>
+          )}
         </div>
         <div className="c-stats">
           <div className="c-stat"><b>{links.length}</b><span>links</span></div>

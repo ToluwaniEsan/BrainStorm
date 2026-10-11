@@ -534,18 +534,12 @@ export function LiveDemo() {
   useEffect(() => {
     if (status !== "listening") return;
     let raf = 0;
-    // The background bubbles swell a little with the voice too (clutter.css).
-    const lamp = document.querySelector<HTMLElement>(".lava-lamp");
     const tick = () => {
       level.current = mic.current?.level() ?? 0;
-      lamp?.style.setProperty("--c-level", Math.min(1, level.current * 2).toFixed(3));
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      lamp?.style.removeProperty("--c-level");
-    };
+    return () => cancelAnimationFrame(raf);
   }, [status]);
 
   // Close everything if the page is left mid-session.

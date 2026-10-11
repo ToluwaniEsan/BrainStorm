@@ -167,6 +167,7 @@ body {
   top: 4%;
   left: 2%;
   animation: bubbleBounceOne 32s ease-in-out infinite;
+  animation: gradientExpansion 12s ease-in-out infinite alternate;
 }
 
 .lava-lamp__ball--one {
@@ -183,7 +184,7 @@ body {
     darkred 96%,
     transparent 100%
   );
-  animation: gradientExpansion 12s ease-in-out infinite alternate;
+
 }
 
 /*

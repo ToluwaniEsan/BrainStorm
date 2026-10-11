@@ -3,12 +3,12 @@ import { files, links, profile } from "@/db/schema";
 import { withUser } from "@/lib/db";
 import { api } from "@/lib/http";
 import { requireUser } from "@/lib/session";
-import { liveInstruction, type Material } from "@/server/persona";
+import { liveInstruction, profilePrimer, type Material } from "@/server/persona";
 
 // Caps on what goes into the Live instruction: enough of a resume or a
 // portfolio page to quote specifics, without crowding out the conversation.
 const PER_SOURCE = 6000;
-const TOTAL = 24000;
+const TOTAL = 16000;
 
 // The Live system instruction for the signed-in user, built from what
 // Clutter knows about them. The browser passes it to Gemini Live.
@@ -39,6 +39,7 @@ export const GET = api(async () => {
 
   return {
     instruction: liveInstruction(p?.understanding ?? null, p?.displayName ?? user.name, material),
+    primer: profilePrimer(material),
     learningEnabled: p?.learningEnabled ?? true,
     sources: { documents: fs.filter((f) => f.text?.trim()).length, links: ls.filter((l) => l.snapshot?.trim()).length },
   };

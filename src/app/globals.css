@@ -118,7 +118,7 @@ body {
     darkred
   );
   background-size: 300% 300%;
-  filter: blur(28px);
+  filter: blur(20px);
   opacity: 0.65;
   animation:
     gradientMovement 25s ease-in infinite,

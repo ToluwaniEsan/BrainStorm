@@ -65,52 +65,44 @@
 
 body { background-color: var(--c-peach); }
 
-/* The background: four large, soft colour fields (cool pastels on the warm
-   base) that drift slowly, like Gemini's glow but full screen. Each field is
-   a radial gradient that fades to nothing, so no blur filter is needed and
-   the GPU only moves layers it already has. Sized from the viewport, so the
-   same picture holds on a phone and a wide screen. */
-.c-aurora {
-  position: fixed;
-  /* Bigger than the screen, so gathering in (scaling down) never shows an edge. */
-  inset: -12%;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transition: transform 1.6s var(--c-ease), opacity 1.2s ease;
+/* The background is Alana's lava lamp (globals.css). Her bubbles travel up
+   to 40% of the screen; here each one stays "grounded" near its own spot and
+   just floats a little, so it never pulls the eye off the page. Her colour
+   cycling (gradientMovement) is kept as is. */
+.lava-lamp {
+  transition: transform 1.6s var(--c-ease);
   transform-origin: 50% 45%;
 }
-.c-aurora__blob {
-  position: absolute;
-  width: 72vmax;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--blob) 0%, transparent 62%);
-  opacity: 0.75;
+.lava-lamp__ball {
   will-change: transform;
-  /* A slow, small float: enough to see the colour breathe, never enough to
-     pull the eye off the page. Each blob has its own path and pace. */
-  animation: c-drift-a 18s ease-in-out infinite;
+  animation:
+    gradientMovement 25s ease-in infinite,
+    c-float-a 17s ease-in-out infinite;
 }
-.c-aurora__blob--one { --blob: var(--c-ps); top: -30vmax; left: -24vmax; }
-.c-aurora__blob--two { --blob: var(--c-id); top: -30vmax; right: -26vmax; animation-name: c-drift-b; animation-duration: 21s; animation-delay: -6s; }
-.c-aurora__blob--three { --blob: var(--c-ae); bottom: -32vmax; left: -14vmax; animation-name: c-drift-b; animation-duration: 19s; animation-direction: reverse; animation-delay: -11s; }
-.c-aurora__blob--four { --blob: var(--c-ai); bottom: -30vmax; right: -20vmax; animation-duration: 23s; animation-direction: reverse; animation-delay: -4s; }
-@keyframes c-drift-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  25% { transform: translate3d(4vmax, 2.5vmax, 0) scale(1.04); }
-  50% { transform: translate3d(1.5vmax, 5vmax, 0) scale(0.98); }
-  75% { transform: translate3d(-3vmax, 2vmax, 0) scale(1.02); }
+.lava-lamp__ball--two { animation-name: gradientMovement, c-float-b; animation-duration: 25s, 20s; animation-delay: 0s, -5s; }
+.lava-lamp__ball--three { animation-name: gradientMovement, c-float-c; animation-duration: 25s, 19s; animation-delay: 0s, -9s; }
+.lava-lamp__ball--four { animation-name: gradientMovement, c-float-a; animation-duration: 25s, 22s; animation-delay: 0s, -3s; animation-direction: normal, reverse; }
+.lava-lamp__ball--five { animation-name: gradientMovement, c-float-b; animation-duration: 25s, 18s; animation-delay: 0s, -12s; animation-direction: normal, reverse; }
+.lava-lamp__ball--six { animation-name: gradientMovement, c-float-c; animation-duration: 25s, 21s; animation-delay: 0s, -7s; animation-direction: normal, reverse; }
+.lava-lamp__ball--seven { animation-name: gradientMovement, c-float-a; animation-duration: 25s, 23s; animation-delay: 0s, -14s; }
+@keyframes c-float-a {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  33% { transform: translate3d(3vw, 2vh, 0); }
+  66% { transform: translate3d(-2vw, 3.5vh, 0); }
 }
-@keyframes c-drift-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  25% { transform: translate3d(-3.5vmax, 3vmax, 0) scale(0.97); }
-  50% { transform: translate3d(-5vmax, -1vmax, 0) scale(1.04); }
-  75% { transform: translate3d(-1.5vmax, -3.5vmax, 0) scale(1); }
+@keyframes c-float-b {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  33% { transform: translate3d(-3vw, 2.5vh, 0); }
+  66% { transform: translate3d(1.5vw, -3vh, 0); }
 }
-/* While a session runs, the colour gathers gently toward the wave and
-   swells a little with the voice (--c-level, 0..1, set by the Home page). */
-body[data-clutter-session] .c-aurora {
+@keyframes c-float-c {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  33% { transform: translate3d(2.5vw, -3vh, 0); }
+  66% { transform: translate3d(-3vw, -1vh, 0); }
+}
+/* While a session runs, the bubbles gather gently toward the wave and swell
+   a little with the voice (--c-level, 0..1, set by the Home page). */
+body[data-clutter-session] .lava-lamp {
   transform: scale(0.9);
   scale: calc(1 + var(--c-level, 0) * 0.1);
   transition: transform 1.6s var(--c-ease), scale 0.2s linear;
@@ -704,18 +696,18 @@ mark.c-hit { background: rgba(255, 198, 144, 0.75); color: inherit; border-radiu
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .c-backdrop::before, .c-bar::before, .c-aurora__blob, .c-mic::before, .c-mic::after { animation: none; }
+  .c-backdrop::before, .c-bar::before, .lava-lamp__ball, .c-mic::before, .c-mic::after { animation: none; }
   .c-card, .c-card li, ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation-duration: 0.001ms; animation-delay: 0s; }
-  .c-aurora, .c-mic-wrap, .c-stage, .c-under, .c-mark, .c-toast, .c-bar-pill { transition-duration: 0.001ms; }
+  .lava-lamp, .c-mic-wrap, .c-stage, .c-under, .c-mark, .c-toast, .c-bar-pill { transition-duration: 0.001ms; }
 }
 
 /* Settings > Look and motion (set by components/prefs.tsx). */
-body[data-clutter-no-bubbles] .c-aurora { display: none; }
+body[data-clutter-no-bubbles] .lava-lamp { display: none; }
 body[data-clutter-calm] .c-backdrop::before,
 body[data-clutter-calm] .c-bar::before,
 body[data-clutter-calm] .c-mic::before,
 body[data-clutter-calm] .c-mic::after,
-body[data-clutter-calm] .c-aurora__blob { animation-play-state: paused; }
+body[data-clutter-calm] .lava-lamp__ball { animation-play-state: paused; }
 
 /* ---------- loading ---------- */
 .c-loading {

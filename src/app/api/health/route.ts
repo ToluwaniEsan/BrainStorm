@@ -1,7 +1,7 @@
 import { connection, NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
-import { getGemini, geminiModels } from "@/lib/gemini";
 import { storageBucket, storageFetch } from "@/lib/supabase-storage";
+import { xaiFetch, xaiModels } from "@/lib/xai";
 
 // Public wiring check: says which services are configured and reachable,
 // never any values. Exa is only checked for a key, since each call costs credits.
@@ -28,7 +28,7 @@ async function probe(check: Check, fn: () => Promise<unknown>): Promise<Check> {
 
 export async function GET() {
   await connection();
-  const [database, storage, gemini] = await Promise.all([
+  const [database, storage, xai] = await Promise.all([
     probe(env("DATABASE_URL"), async () => {
       const [row] = await getSql()`select current_user as role, to_regprocedure('app.upgrade_user(text)') is not null as ready`;
       if (row.role !== "brainstorm_app") throw new Error("wrong role");
@@ -38,15 +38,15 @@ export async function GET() {
       const res = await storageFetch(`bucket/${storageBucket()}`);
       if (!res.ok) throw Object.assign(new Error("Storage check failed"), { status: res.status });
     }),
-    probe(env("GEMINI_API_KEY", "GEMINI_LIVE_MODEL", "GEMINI_FLASH_MODEL", "GEMINI_PRO_MODEL", "GEMINI_EMBED_MODEL"), async () => {
-      await getGemini().models.get({ model: geminiModels.flash });
+    probe(env("XAI_API_KEY", "XAI_VOICE_MODEL", "XAI_FAST_MODEL", "XAI_TEXT_MODEL"), async () => {
+      await xaiFetch(`/models/${encodeURIComponent(xaiModels.fast)}`);
     }),
   ]);
   const checks = {
     auth0: env("AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_CLIENT_SECRET", "AUTH0_SECRET"),
     database,
     storage,
-    gemini,
+    xai,
     exa: env("EXA_API_KEY"),
   };
   const healthy = Object.values(checks).every((c: Check) => c.configured && c.ok !== false);

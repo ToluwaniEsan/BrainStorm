@@ -21,7 +21,7 @@ export const POST = api(async (_req: Request, { params }: Ctx) => {
   if (!link) notFound("Link not found");
   const page = (await readGithubRepo(link.url).catch(() => null)) ?? (await exaContents(link.url));
   if (!page?.text) throw new HttpError(422, "Couldn't read any text from that link");
-  // The snapshot is saved on its own, so a Gemini outage doesn't lose the page.
+  // The snapshot is saved on its own, so an xAI outage doesn't lose the page.
   const [row] = await withUser(user.sub, (tx) =>
     tx
       .update(links)

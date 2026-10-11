@@ -1,9 +1,9 @@
 import { cache, Suspense } from "react";
-import "./globals.css";
 
 import { profile } from "@/db/schema";
 import { auth0 } from "@/lib/auth0";
 import { LiveDemo } from "@/components/live-demo/live-demo";
+import { PageLoading } from "@/components/loading";
 import { EmailInUseError, provisionUser, withUser, type Identity } from "@/lib/db";
 
 // Home. Signed out: a Log in button that goes to Auth0. Signed in: the voice
@@ -75,13 +75,7 @@ async function Home() {
 export default function Page() {
   return (
     <Suspense
-      fallback={
-        <main className="c-shell">
-          <div className="c-landing">
-            <p className="c-muted">Loading...</p>
-          </div>
-        </main>
-      }
+      fallback={<PageLoading />}
     >
       <Home />
     </Suspense>

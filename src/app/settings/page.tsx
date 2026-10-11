@@ -5,6 +5,7 @@ import { MotionSettings } from "@/components/prefs";
 import { DeleteAccount } from "@/components/settings/delete-account";
 import { LearningSetting } from "@/components/settings/learning-setting";
 import { auth0 } from "@/lib/auth0";
+import { PageLoading } from "@/components/loading";
 
 async function Settings() {
   const session = await auth0.getSession();
@@ -73,7 +74,7 @@ async function Settings() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<main className="c-shell"><div className="c-page"><p className="c-muted">Loading...</p></div></main>}>
+    <Suspense fallback={<PageLoading />}>
       <Settings />
     </Suspense>
   );

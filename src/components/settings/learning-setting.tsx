@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { LearningToggle } from "@/components/profile/learning-toggle";
+import { Loading } from "@/components/loading";
 
 // The learning switch on Settings; the same one sits on Profile.
 export function LearningSetting() {
@@ -29,7 +30,7 @@ export function LearningSetting() {
   }
 
   if (error && enabled === null) return <p className="c-status error">{error}</p>;
-  if (enabled === null) return <p className="c-muted">Loading...</p>;
+  if (enabled === null) return <Loading />;
   return (
     <>
       {error && <p className="c-status error">{error}</p>}

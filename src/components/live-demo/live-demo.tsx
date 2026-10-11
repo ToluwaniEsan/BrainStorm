@@ -1,38 +1,38 @@
 "use client";
 
-import { EndSensitivity, GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import { useEffect, useRef, useState } from "react";
 
 import { Player, startMic, type Mic } from "./audio";
+import { connectVoice, errorText, type VoiceEvent, type VoiceSession } from "./grok-voice";
 import { applyTool, emptyBoard, type Board } from "./tracks";
 import { Wave } from "./wave";
 
 type Status = "idle" | "connecting" | "listening" | "error";
 type LogEntry = { id: number; at: string; kind: "tool" | "thought" | "info" | "error"; title: string; detail?: string };
-type Line = { id: number; who: "you" | "gemini"; text: string };
+type Line = { id: number; who: "you" | "clutter"; text: string };
 
-// Fast check for the obvious ways of asking Gemini for a response. Anything
-// subtler ("do you feel me?") is caught by Gemini Flash's reply_to_user call.
+// Fast check for the obvious ways of asking Clutter for a response. Anything
+// subtler ("do you feel me?") is caught by the track sorter's reply_to_user call.
 const INVITE =
-  /\b(what do you think|what'?s your (take|opinion|view)|what is your (take|opinion|view)|any (thoughts|ideas|feedback)|your thoughts|thoughts on (that|this)|what should i|do you think|(do|can) you (feel|see|get) me|you feel me|you know what i mean|does (that|this) make sense|be honest|am i (crazy|wrong|right)|can you (help|tell me|ask me)|help me (think|out)|talk to me|hey (gemini|brainstorm)|over to you)\b/i;
+  /\b(what do you think|what'?s your (take|opinion|view)|what is your (take|opinion|view)|any (thoughts|ideas|feedback)|your thoughts|thoughts on (that|this)|what should i|do you think|(do|can) you (feel|see|get) me|you feel me|you know what i mean|does (that|this) make sense|be honest|am i (crazy|wrong|right)|can you (help|tell me|ask me)|help me (think|out)|talk to me|hey (clutter|brainstorm)|over to you)\b/i;
 
-// While Gemini's reply waits for a verdict on whether the user asked for it.
+// While Clutter's reply waits for a verdict on whether the user asked for it.
 const HOLD_MS = 6000;
 
 // Track card colours, pastel takes on the Adobe app colours (see clutter.css).
 const TRACK_COLORS = ["--c-ps", "--c-ai", "--c-ae", "--c-id", "--c-dw", "--c-lr", "--c-xd", "--c-pr", "--c-ac"];
 
-// Clutter's Home: the voice mode. Tapping the mic pulls the background
-// bubbles into a wave that moves with your voice; once the first track
-// appears the wave rises and the tracks line up under it; stopping turns the
-// wave back into the mic at the top. Each stopped session is saved to Studio.
+// Clutter's Home: the voice mode. Tapping the mic fades it out and draws a
+// wave where the wordmark was, which moves with your voice; once the first
+// track appears the wave rises and the tracks line up under it; stopping
+// brings the mic back at the top. Each stopped session is saved to Studio.
 //
-// How it works: the browser gets a one-time token from /api/live/token and
-// talks to Gemini Live directly for transcription and voice, with
-// instructions built from what Clutter knows
-// about the user (/api/live/context). Every couple of seconds the new
-// transcript goes to /api/live/tracks, where Gemini Flash sorts it into tracks
-// and says whether the user asked for a reply. Gemini's voice only plays when
+// How it works: the browser gets a short-lived secret from /api/live/token and
+// talks to Grok's realtime voice API directly for transcription and voice,
+// with instructions built from what Clutter knows about the user
+// (/api/live/context). New transcript goes to /api/live/tracks, where a fast
+// Grok text model sorts it into tracks and says whether the user asked for a
+// reply. Grok answers every pause, so its voice is held and only plays when
 // they did. What the user said goes to /api/live/learn (if learning is on).
 export function LiveDemo() {
   const [status, setStatus] = useState<Status>("idle");
@@ -46,22 +46,22 @@ export function LiveDemo() {
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
 
   const boardRef = useRef<Board>(emptyBoard);
-  const session = useRef<Session | null>(null);
+  const session = useRef<VoiceSession | null>(null);
   const mic = useRef<Mic | null>(null);
   const player = useRef<Player | null>(null);
   const seq = useRef(0);
-  const turn = useRef<{ you?: number; gemini?: number }>({});
+  const turn = useRef<{ you?: number; clutter?: number }>({});
   const wanted = useRef(false); // false once the user presses stop
   const pending = useRef(""); // transcript not yet sorted into tracks
   const filed = useRef(""); // transcript already sorted, for context
   const sorting = useRef(false);
   const sortRetryAt = useRef(0); // after a failed sort, wait until this time before trying again
   const sortBackoff = useRef(0);
-  // Reply gate. "idle": Gemini hasn't spoken since the user did. "holding":
+  // Reply gate. "idle": Clutter hasn't spoken since the user did. "holding":
   // it started a reply nobody has confirmed was asked for, so it's buffered.
   // "allowed": play it. "muted": drop it.
   const gate = useRef<"idle" | "holding" | "allowed" | "muted">("idle");
-  const held = useRef<{ audio: string[]; text: string; done: boolean }>({ audio: [], text: "", done: false });
+  const held = useRef<{ audio: string[]; text: string; done: boolean; items: string[] }>({ audio: [], text: "", done: false, items: [] });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const invitedNext = useRef(false); // the user's latest words asked for a reply
   const spokeSinceUser = useRef(false);
@@ -87,7 +87,7 @@ export function LiveDemo() {
 
   // Appends streamed transcript text to the current line for that speaker.
   const appendLine = (who: Line["who"], text: string) => {
-    const key = who === "you" ? "you" : "gemini";
+    const key = who === "you" ? "you" : "clutter";
     const current = turn.current[key];
     if (current === undefined) {
       const id = ++seq.current;
@@ -100,7 +100,7 @@ export function LiveDemo() {
 
   function showReply(text: string) {
     turn.current.you = undefined;
-    appendLine("gemini", text);
+    appendLine("clutter", text);
   }
 
   function release() {
@@ -108,30 +108,30 @@ export function LiveDemo() {
     const h = held.current;
     h.audio.forEach((a) => player.current?.play(a));
     if (h.text) showReply(h.text);
-    held.current = { audio: [], text: "", done: false };
+    held.current = { audio: [], text: "", done: false, items: [] };
     gate.current = h.done ? "idle" : "allowed";
   }
 
   function mute(why: string) {
     if (holdTimer.current) clearTimeout(holdTimer.current);
     const wasDone = held.current.done;
-    held.current = { audio: [], text: "", done: false };
+    // Stop it and take it out of the conversation, so Clutter doesn't build
+    // on a reply the user never heard.
+    session.current?.dropReply(held.current.items, !wasDone);
+    held.current = { audio: [], text: "", done: false, items: [] };
     gate.current = wasDone ? "idle" : "muted";
     // The user never heard it, so a request Flash confirms later still needs a nudge.
     spokeSinceUser.current = false;
     addLog("info", "Muted a reply you didn't ask for", why);
   }
 
-  // Asks Gemini Live to answer now (used when Flash spots a request for a
-  // reply that Live itself let pass).
+  // Asks the voice model to answer now (used when the track sorter spots a
+  // request for a reply after the voice reply was already dropped).
   function nudge() {
     if (nudged.current) return; // once per thing they said
     nudged.current = true;
     invitedNext.current = true;
-    session.current?.sendClientContent({
-      turns: [{ role: "user", parts: [{ text: "(I'm asking for your response to what I just said. Reply now, briefly.)" }] }],
-      turnComplete: true,
-    });
+    session.current?.sendText("(I'm asking for your response to what I just said. Reply now, briefly.)", true);
   }
 
   function onUserWords(text: string) {
@@ -147,48 +147,65 @@ export function LiveDemo() {
     if (unlearned.current.length > 3000) void learn();
   }
 
-  function onMessage(msg: LiveServerMessage) {
-    const sc = msg.serverContent;
-    if (sc) {
-      if (sc.interimInputTranscription?.text) setInterim(sc.interimInputTranscription.text);
-      if (sc.inputTranscription?.text) {
+  // One chunk of Clutter's reply (audio and/or its transcript), through the gate.
+  function onReply(audio: string | undefined, text: string, itemId: unknown) {
+    spokeSinceUser.current = true;
+    if (gate.current === "idle") {
+      if (invitedNext.current) gate.current = "allowed";
+      else {
+        // Not obviously asked for: hold it while the track sorter checks the user's words.
+        gate.current = "holding";
+        holdTimer.current = setTimeout(() => mute("No request for a reply was found in time."), HOLD_MS);
+        void sortPending();
+      }
+    }
+    if (gate.current === "allowed") {
+      if (audio) player.current?.play(audio);
+      if (text) showReply(text);
+    } else if (gate.current === "holding") {
+      if (audio) held.current.audio.push(audio);
+      held.current.text += text;
+      if (typeof itemId === "string" && !held.current.items.includes(itemId)) held.current.items.push(itemId);
+    }
+  }
+
+  function onEvent(e: VoiceEvent) {
+    switch (e.type) {
+      case "conversation.item.input_audio_transcription.updated":
+        setInterim(String(e.transcript ?? ""));
+        break;
+      case "conversation.item.input_audio_transcription.completed": {
         setInterim("");
-        turn.current.gemini = undefined;
-        appendLine("you", sc.inputTranscription.text);
-        onUserWords(sc.inputTranscription.text);
-      }
-      const audio = (sc.modelTurn?.parts ?? []).filter((p) => p.inlineData?.data && p.inlineData.mimeType?.startsWith("audio/"));
-      const text = sc.outputTranscription?.text ?? "";
-      for (const part of sc.modelTurn?.parts ?? []) {
-        if (part.thought && part.text) addLog("thought", "Clutter's reasoning (voice)", part.text);
-      }
-      if (audio.length || text) {
-        spokeSinceUser.current = true;
-        if (gate.current === "idle") {
-          if (invitedNext.current) gate.current = "allowed";
-          else {
-            // Not obviously asked for: hold it while Flash checks the user's words.
-            gate.current = "holding";
-            holdTimer.current = setTimeout(() => mute("No request for a reply was found in time."), HOLD_MS);
-            void sortPending();
-          }
+        const text = String(e.transcript ?? "").trim();
+        if (!text) break;
+        turn.current.clutter = undefined;
+        appendLine("you", ` ${text}`);
+        onUserWords(` ${text}`);
+        // The transcript can land after Clutter has started a (held) reply.
+        if (gate.current === "holding") {
+          if (invitedNext.current) release();
+          else void sortPending();
         }
-        if (gate.current === "allowed") {
-          audio.forEach((p) => player.current?.play(p.inlineData!.data!));
-          if (text) showReply(text);
-        } else if (gate.current === "holding") {
-          held.current.audio.push(...audio.map((p) => p.inlineData!.data!));
-          held.current.text += text;
-        }
+        break;
       }
-      if (sc.interrupted) {
+      case "response.output_audio.delta":
+        if (typeof e.delta === "string") onReply(e.delta, "", e.item_id);
+        break;
+      case "response.output_audio_transcript.delta":
+        if (typeof e.delta === "string") onReply(undefined, e.delta, e.item_id);
+        break;
+      case "input_audio_buffer.speech_started":
+        // The user talked over Clutter: stop playback. A held or muted reply
+        // is abandoned; whatever comes next is judged afresh.
         player.current?.clear();
-        // The held or muted reply is abandoned; whatever Live says next is judged afresh.
-        if (gate.current === "holding" && holdTimer.current) clearTimeout(holdTimer.current);
-        if (gate.current === "holding") held.current = { audio: [], text: "", done: false };
+        if (gate.current === "holding") {
+          if (holdTimer.current) clearTimeout(holdTimer.current);
+          session.current?.dropReply(held.current.items, !held.current.done);
+          held.current = { audio: [], text: "", done: false, items: [] };
+        }
         if (gate.current === "holding" || gate.current === "muted") gate.current = "idle";
-      }
-      if (sc.turnComplete) {
+        break;
+      case "response.done":
         turn.current = {};
         // An invite only counts for the turn it was said in.
         userTail.current = "";
@@ -200,17 +217,18 @@ export function LiveDemo() {
             invitedNext.current = false;
           }
         } else if (invitedNext.current && !spokeSinceUser.current && !nudged.current) {
-          // They asked, but Live chose to stay silent: ask it once to answer.
+          // They asked, but Clutter's reply was dropped or empty: ask it once to answer.
           nudge();
         } else {
           gate.current = "idle";
           invitedNext.current = false;
         }
         void sortPending();
-      }
+        break;
+      case "error":
+        addLog("error", "Voice error", errorText(e));
+        break;
     }
-
-    if (msg.goAway) addLog("info", "Clutter will end this session soon", `Time left: ${msg.goAway.timeLeft ?? "?"}`);
   }
 
   // Sends what the user said to /api/live/learn, which saves lasting facts
@@ -233,7 +251,7 @@ export function LiveDemo() {
     }
   }
 
-  // Sends the transcript gathered since the last call to Gemini Flash and
+  // Sends the transcript gathered since the last call to the track sorter and
   // applies the track changes it returns. One request at a time.
   async function sortPending() {
     const text = pending.current.trim();
@@ -300,11 +318,11 @@ export function LiveDemo() {
     }
   }
 
-  async function connect(extras: { thoughts: boolean; quiet: boolean }): Promise<Session> {
+  async function connect(extras: { captions: boolean }): Promise<VoiceSession> {
     const res = await fetch("/api/live/token", { method: "POST" });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? `Token request failed (${res.status})`);
-    addLog("info", "Got a one-time voice token", `Model: ${body.model}`);
+    addLog("info", "Got a short-lived voice token", `Model: ${body.model}`);
 
     const ctx = await fetch("/api/live/context").then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (!ctx) addLog("error", "Couldn't load what Clutter knows about you", "Clutter starts without it.");
@@ -316,57 +334,23 @@ export function LiveDemo() {
     const systemInstruction: string =
       ctx?.instruction ?? "Your name is Clutter. Stay silent unless the user asks for your response. Then answer briefly and ask a grounding follow-up question.";
 
-    const ai = new GoogleGenAI({ apiKey: body.token, httpOptions: { apiVersion: "v1alpha" } });
-    // Resolves once Gemini accepts the settings; rejects if it closes first.
-    let ready = false;
-    let settle: { ok: () => void; fail: (e: Error) => void } = { ok() {}, fail() {} };
-    const setup = new Promise<void>((ok, fail) => (settle = { ok, fail }));
-    const timer = setTimeout(() => settle.fail(new Error("Clutter did not answer in time")), 15_000);
-    const sess = await ai.live.connect({
+    const sess = await connectVoice({
+      token: body.token,
       model: body.model,
-      config: {
-        responseModalities: [Modality.AUDIO],
-        systemInstruction,
-        // End a turn soon after the speaker pauses, so the final transcript
-        // arrives sooner.
-        realtimeInputConfig: {
-          automaticActivityDetection: { endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH, silenceDurationMs: 400 },
-        },
-        inputAudioTranscription: {},
-        outputAudioTranscription: {},
-        ...(extras.thoughts ? { thinkingConfig: { includeThoughts: true } } : {}),
-        // Lets the model choose not to answer at all when nobody asked it.
-        ...(extras.quiet ? { proactivity: { proactiveAudio: true } } : {}),
-      },
-      callbacks: {
-        onmessage: (m) => {
-          if (m.setupComplete && !ready) {
-            ready = true;
-            settle.ok();
-          }
-          onMessage(m);
-        },
-        onerror: (e) => addLog("error", "Connection error", e.message),
-        onclose: (e) => {
-          if (!ready) settle.fail(new Error(e.reason || `Clutter closed the connection (code ${e.code})`));
-          else if (session.current === sess) {
-            addLog("info", "Session ended", e.reason || `code ${e.code}`);
-            stop();
-          }
-        },
+      voice: body.voice ?? "eve",
+      instructions: systemInstruction,
+      captions: extras.captions,
+      onEvent,
+      onClose: (reason) => {
+        if (session.current === sess) {
+          addLog("info", "Session ended", reason);
+          stop();
+        }
       },
     });
-    try {
-      await setup;
-    } catch (err) {
-      sess.close();
-      throw err;
-    } finally {
-      clearTimeout(timer);
-    }
-    // Put their documents and links into the conversation itself; Live models
+    // Put their documents and links into the conversation itself; voice models
     // follow that more reliably than a long system instruction.
-    if (ctx?.primer) sess.sendClientContent({ turns: [{ role: "user", parts: [{ text: ctx.primer }] }], turnComplete: false });
+    if (ctx?.primer) sess.sendText(ctx.primer, false);
     return sess;
   }
 
@@ -376,14 +360,10 @@ export function LiveDemo() {
     startedAt.current ??= new Date().toISOString();
     try {
       player.current = new Player();
-      // Some Live models reject the "show thoughts" or "may stay silent"
-      // settings, so fall back step by step.
-      const attempts = [
-        { thoughts: true, quiet: true },
-        { thoughts: false, quiet: true },
-        { thoughts: false, quiet: false },
-      ];
-      let sess: Session | undefined;
+      // Live captions need a transcription setting the API may reject, so
+      // retry without them.
+      const attempts = [{ captions: true }, { captions: false }];
+      let sess: VoiceSession | undefined;
       for (const [i, extras] of attempts.entries()) {
         try {
           sess = await connect(extras);
@@ -400,9 +380,7 @@ export function LiveDemo() {
       }
       session.current = sess;
       addLog("info", "Connected to Clutter. Start talking.");
-      const m = await startMic((data) =>
-        session.current?.sendRealtimeInput({ audio: { data, mimeType: "audio/pcm;rate=16000" } }),
-      );
+      const m = await startMic((data) => session.current?.sendAudio(data));
       if (!wanted.current) {
         m.stop();
         return;
@@ -431,7 +409,7 @@ export function LiveDemo() {
     void learn();
     if (holdTimer.current) clearTimeout(holdTimer.current);
     gate.current = "idle";
-    held.current = { audio: [], text: "", done: false };
+    held.current = { audio: [], text: "", done: false, items: [] };
   }
 
   // What would be saved to Studio right now.
@@ -472,10 +450,10 @@ export function LiveDemo() {
     e.preventDefault();
     const text = typed.trim();
     if (!text || !session.current) return;
-    turn.current.gemini = undefined;
+    turn.current.clutter = undefined;
     appendLine("you", ` ${text} (typed)`);
     onUserWords(` ${text}`);
-    session.current.sendRealtimeInput({ text });
+    session.current.sendText(text, true);
     setTyped("");
   }
 
@@ -519,7 +497,7 @@ export function LiveDemo() {
         studioId.current = saved.id;
         startedAt.current = saved.startedAt;
         setBoard(boardRef.current);
-        setLines(saved.lines.map((l) => ({ id: ++seq.current, who: l.who === "you" ? "you" : "gemini", text: l.text })));
+        setLines(saved.lines.map((l) => ({ id: ++seq.current, who: l.who === "you" ? "you" : "clutter", text: l.text })));
       })
       .catch((err) => alive && flash((err as Error).message, true));
     return () => {
@@ -556,12 +534,18 @@ export function LiveDemo() {
   useEffect(() => {
     if (status !== "listening") return;
     let raf = 0;
+    // The background bubbles swell a little with the voice too (clutter.css).
+    const lamp = document.querySelector<HTMLElement>(".lava-lamp");
     const tick = () => {
       level.current = mic.current?.level() ?? 0;
+      lamp?.style.setProperty("--c-level", Math.min(1, level.current * 2).toFixed(3));
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      lamp?.style.removeProperty("--c-level");
+    };
   }, [status]);
 
   // Close everything if the page is left mid-session.
@@ -572,8 +556,8 @@ export function LiveDemo() {
   const live = listening || status === "connecting";
   const phase = live ? (board.tracks.length ? "tracks" : "wave") : board.tracks.length ? "ended" : "idle";
 
-  // While a session runs or its tracks are on screen, the background bubbles
-  // are pulled into the wave (clutter.css watches this attribute).
+  // While a session runs or its tracks are on screen, the background colour
+  // gathers in a little toward the wave (clutter.css watches this attribute).
   useEffect(() => {
     if (phase === "idle") delete document.body.dataset.clutterSession;
     else document.body.dataset.clutterSession = "";
@@ -661,7 +645,6 @@ export function LiveDemo() {
             <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" />
           </svg>
         </button>
-        <div className="c-mic-shadow" />
         <div className="c-mic-hint">{status === "error" ? "Couldn't start. Open Details for why." : "Tap to start a session"}</div>
       </div>
 

@@ -33,6 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <div className="c-backdrop" aria-hidden="true" />
+        {/* Alana's lava lamp (globals.css), kept grounded by clutter.css. */}
         <div className="lava-lamp" aria-hidden="true">
           <div className="lava-lamp__float lava-lamp__float--one">
             <span className="lava-lamp__ball lava-lamp__ball--one" />

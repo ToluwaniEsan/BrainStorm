@@ -9,6 +9,13 @@
 --font-mono: var(--font-geist-mono);
 }
 
+/*
+  Alana's lava lamp background. It was switched off on 2026-10-11 for a
+  trial background, and switched back on the same day at the user's request.
+  clutter.css keeps the bubbles "grounded": it swaps the long bounces below
+  for a small float near each bubble's spot (see .lava-lamp__ball there).
+*/
+
 @keyframes gradientMovement {
 0% {
 background-position: 0% 50%;
@@ -199,6 +206,8 @@ animation-name: gradientMovement, bubbleBounceSeven;
 animation-duration: 25s, 36s;
 }
 
+/* Her page text rule stays off: it turned all page text red Arial, and the
+   Clutter pages set their own type. .c-shell keeps content above the bubbles.
 main {
 position: relative;
 z-index: 1;
@@ -206,6 +215,7 @@ background-color: transparent;
 color: rgb(191, 18, 18);
 font-family: Arial, Helvetica, sans-serif;
 }
+*/
 
 @media (prefers-reduced-motion: reduce) {
 .lava-lamp__ball {

@@ -1,9 +1,9 @@
 import { api } from "@/lib/http";
-import { createLiveToken } from "@/lib/gemini-live";
 import { requireUser } from "@/lib/session";
+import { createVoiceToken } from "@/lib/xai";
 
-// Browser calls this right before connecting to Gemini Live.
+// Browser calls this right before connecting to Grok's realtime voice.
 export const POST = api(async () => {
   await requireUser();
-  return createLiveToken();
+  return createVoiceToken();
 });

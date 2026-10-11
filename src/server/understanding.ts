@@ -1,9 +1,8 @@
 import "server-only";
-import { Type } from "@google/genai";
 import { desc, eq } from "drizzle-orm";
 import { achievements, files, links, profile, userFacts } from "@/db/schema";
 import { lockForUser, withUser } from "@/lib/db";
-import { geminiModels, getGemini } from "@/lib/gemini";
+import { outputText, respond, xaiModels } from "@/lib/xai";
 import { indexQuietly } from "./memory";
 
 // BrainStorm's picture of one user, built only from what they gave us (profile,
@@ -47,17 +46,20 @@ export async function refreshUnderstanding(sub: string): Promise<string | null> 
   ].filter(Boolean);
   if (sources.length === 0) return null;
 
-  const res = await getGemini().models.generateContent({
-    model: geminiModels.flash,
-    contents: sources.join("\n\n---\n\n"),
-    config: {
-      systemInstruction: `Summarise who this person is for an assistant that will talk with them. Use ONLY the material given.
+  const res = await respond({
+    model: xaiModels.text,
+    input: [
+      {
+        role: "system",
+        content: `Summarise who this person is for an assistant that will talk with them. Use ONLY the material given.
 Write short sections: "Who they are", "What they have actually done" (concrete work with the source, e.g. "repo X", "portfolio"),
 "Skills shown by evidence", "What they say they want / are working on", "Gaps or open questions" (claims or goals with no evidence yet).
 Never guess or add anything not in the material. Under 300 words. Plain text.`,
-    },
+      },
+      { role: "user", content: sources.join("\n\n---\n\n") },
+    ],
   });
-  const understanding = res.text?.trim() || null;
+  const understanding = outputText(res) || null;
   await withUser(sub, (tx) =>
     tx.update(profile).set({ understanding, understandingUpdatedAt: new Date() }).where(eq(profile.id, p.id)),
   );
@@ -71,21 +73,38 @@ export async function learnFromConversation(sub: string, text: string): Promise<
   const known = await withUser(sub, (tx) =>
     tx.select({ fact: userFacts.fact }).from(userFacts).orderBy(desc(userFacts.createdAt)).limit(80),
   );
-  const res = await getGemini().models.generateContent({
-    model: geminiModels.flash,
-    contents: `Already known:\n${known.map((k) => `- ${k.fact}`).join("\n") || "(nothing)"}\n\nWhat they just said:\n"""${text.slice(0, 12000)}"""`,
-    config: {
-      systemInstruction: `Extract lasting facts about the speaker from what they said: their goals, projects, skills they say they have,
+  const res = await respond({
+    model: xaiModels.fast,
+    input: [
+      {
+        role: "system",
+        content: `Extract lasting facts about the speaker from what they said: their goals, projects, skills they say they have,
 experience, preferences, constraints, people or tools they work with. Only what they clearly said about themselves, in short
 third-person sentences ("Wants to launch a podcast by spring"). No guesses, no opinions, nothing already known, no passing moods.
 Return an empty list if there is nothing lasting.`,
-      responseMimeType: "application/json",
-      responseSchema: { type: Type.OBJECT, properties: { facts: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["facts"] },
+      },
+      {
+        role: "user",
+        content: `Already known:\n${known.map((k) => `- ${k.fact}`).join("\n") || "(nothing)"}\n\nWhat they just said:\n"""${text.slice(0, 12000)}"""`,
+      },
+    ],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "facts",
+        strict: true,
+        schema: {
+          type: "object",
+          properties: { facts: { type: "array", items: { type: "string" } } },
+          required: ["facts"],
+          additionalProperties: false,
+        },
+      },
     },
   });
   let facts: string[] = [];
   try {
-    facts = (JSON.parse(res.text ?? "{}").facts ?? []).filter((f: unknown) => typeof f === "string" && f.trim()).slice(0, 20);
+    facts = (JSON.parse(outputText(res) || "{}").facts ?? []).filter((f: unknown) => typeof f === "string" && f.trim()).slice(0, 20);
   } catch {
     return [];
   }

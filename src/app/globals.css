@@ -152,7 +152,7 @@ body {
 }
 
 .lava-lamp__ball--one {
-  --ball-gradient: linear-gradient(
+  --ball-gradient: gradient(
     blue,
     orange,
     purple,

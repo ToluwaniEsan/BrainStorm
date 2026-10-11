@@ -1,4 +1,5 @@
 import "server-only";
+import { ApiError } from "@google/genai";
 import { connection, NextResponse } from "next/server";
 
 export class HttpError extends Error {
@@ -35,9 +36,23 @@ export function api<A extends unknown[]>(fn: (...args: A) => Promise<unknown>) {
         return NextResponse.json({ error: "Invalid or unknown reference in request" }, { status: 400 });
       }
       console.error(err);
+      // A Gemini API failure (quota, bad request, model unavailable): say so,
+      // with Gemini's own status and message, so it can be fixed from the page.
+      if (err instanceof ApiError) {
+        return NextResponse.json({ error: `Gemini error ${err.status}: ${geminiMessage(err.message)}` }, { status: 502 });
+      }
       return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
   };
+}
+
+// Gemini puts its JSON error body in the message; keep just the readable part.
+function geminiMessage(raw: string): string {
+  try {
+    const m = JSON.parse(raw.slice(raw.indexOf("{")))?.error?.message;
+    if (typeof m === "string") return m.slice(0, 300);
+  } catch {}
+  return raw.slice(0, 300);
 }
 
 export function notFound(what = "Not found"): never {

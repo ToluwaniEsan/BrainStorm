@@ -45,6 +45,8 @@ export function LiveDemo() {
   const pending = useRef(""); // transcript not yet sorted into tracks
   const filed = useRef(""); // transcript already sorted, for context
   const sorting = useRef(false);
+  const sortRetryAt = useRef(0); // after a failed sort, wait until this time before trying again
+  const sortBackoff = useRef(0);
   // Reply gate. "idle": Gemini hasn't spoken since the user did. "holding":
   // it started a reply nobody has confirmed was asked for, so it's buffered.
   // "allowed": play it. "muted": drop it.
@@ -53,6 +55,8 @@ export function LiveDemo() {
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const invitedNext = useRef(false); // the user's latest words asked for a reply
   const spokeSinceUser = useRef(false);
+  const nudged = useRef(false); // nudged Live once since the user last spoke
+  const userTail = useRef(""); // the user's latest words since Clutter last finished, for the invite check
   const unlearned = useRef(""); // what the user said that /api/live/learn hasn't seen
 
   const addLog = (kind: LogEntry["kind"], title: string, detail?: string) =>
@@ -98,6 +102,8 @@ export function LiveDemo() {
   // Asks Gemini Live to answer now (used when Flash spots a request for a
   // reply that Live itself let pass).
   function nudge() {
+    if (nudged.current) return; // once per thing they said
+    nudged.current = true;
     invitedNext.current = true;
     session.current?.sendClientContent({
       turns: [{ role: "user", parts: [{ text: "(I'm asking for your response to what I just said. Reply now, briefly.)" }] }],
@@ -109,7 +115,12 @@ export function LiveDemo() {
     pending.current += text;
     unlearned.current += text;
     spokeSinceUser.current = false;
-    if (INVITE.test(text)) invitedNext.current = true;
+    nudged.current = false;
+    // A new user turn ends any reply that was muted, so the next one can be heard.
+    if (gate.current === "muted") gate.current = "idle";
+    // Transcripts arrive in pieces ("what do you" + " think?"), so check the recent run.
+    userTail.current = `${userTail.current}${text}`.slice(-200);
+    if (INVITE.test(userTail.current)) invitedNext.current = true;
     if (unlearned.current.length > 3000) void learn();
   }
 
@@ -150,13 +161,18 @@ export function LiveDemo() {
       if (sc.interrupted) {
         player.current?.clear();
         if (gate.current === "holding") held.current = { audio: [], text: "", done: false };
+        if (gate.current === "muted") gate.current = "idle";
       }
       if (sc.turnComplete) {
         turn.current = {};
         if (gate.current === "holding") held.current.done = true;
-        else {
+        else if (invitedNext.current && !spokeSinceUser.current && !nudged.current) {
+          // They asked, but Live chose to stay silent: ask it once to answer.
+          nudge();
+        } else {
           gate.current = "idle";
           invitedNext.current = false;
+          if (spokeSinceUser.current) userTail.current = "";
         }
         void sortPending();
       }
@@ -189,7 +205,7 @@ export function LiveDemo() {
   // applies the track changes it returns. One request at a time.
   async function sortPending() {
     const text = pending.current.trim();
-    if (!text || sorting.current) return;
+    if (!text || sorting.current || Date.now() < sortRetryAt.current) return;
     sorting.current = true;
     pending.current = "";
     let wantsReply = false;
@@ -207,6 +223,7 @@ export function LiveDemo() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Track request failed (${res.status})`);
+      sortBackoff.current = 0;
       filed.current += ` ${text}`;
       for (const t of (body.thoughts ?? []) as string[]) addLog("thought", "Clutter's reasoning", t);
       let changed = false;
@@ -232,6 +249,9 @@ export function LiveDemo() {
     } catch (err) {
       // Keep the words so the next round tries them again.
       pending.current = `${text} ${pending.current}`.slice(-4000);
+      // Back off (4 s, 8 s, ... up to 30 s) instead of retrying on every event.
+      sortBackoff.current = Math.min(sortBackoff.current ? sortBackoff.current * 2 : 4000, 30_000);
+      sortRetryAt.current = Date.now() + sortBackoff.current;
       addLog("error", "Sorting into tracks failed", (err as Error).message);
     } finally {
       sorting.current = false;
@@ -243,8 +263,8 @@ export function LiveDemo() {
       else invitedNext.current = true;
     } else if (gate.current === "holding") {
       // Words not yet checked may still hold the request; check them first.
-      if (pending.current.trim()) void sortPending();
-      else mute("Clutter only speaks when you turn to it for a response.");
+      if (pending.current.trim() && Date.now() >= sortRetryAt.current) void sortPending();
+      else if (!pending.current.trim()) mute("Clutter only speaks when you turn to it for a response.");
     }
   }
 
@@ -312,6 +332,9 @@ export function LiveDemo() {
     } finally {
       clearTimeout(timer);
     }
+    // Put their documents and links into the conversation itself; Live models
+    // follow that more reliably than a long system instruction.
+    if (ctx?.primer) sess.sendClientContent({ turns: [{ role: "user", parts: [{ text: ctx.primer }] }], turnComplete: false });
     return sess;
   }
 

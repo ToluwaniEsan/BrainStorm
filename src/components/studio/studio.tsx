@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Loading } from "@/components/loading";
 
 type Session = {
   id: string;
@@ -110,7 +111,7 @@ export function Studio() {
   }
 
   if (error && !sessions) return <p className="c-status error">{error}</p>;
-  if (!sessions) return <p className="c-muted">Loading your sessions...</p>;
+  if (!sessions) return <Loading label="Loading your sessions" />;
   if (!sessions.length) {
     return (
       <div className="c-panel">

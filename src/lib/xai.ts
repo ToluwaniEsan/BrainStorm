@@ -128,5 +128,6 @@ export async function createVoiceToken() {
   const token = body.value ?? body.client_secret?.value;
   if (!token) throw new Error("xAI returned no voice token");
   const expiresAt = new Date(body.expires_at ? body.expires_at * 1000 : Date.now() + seconds * 1000).toISOString();
-  return { token, model: xaiModels.voice, expiresAt };
+  // XAI_VOICE is optional: one of xAI's voices (eve, ara, rex, sal, leo) or a custom voice id.
+  return { token, model: xaiModels.voice, voice: process.env.XAI_VOICE || "eve", expiresAt };
 }

@@ -22,10 +22,10 @@ const HOLD_MS = 6000;
 // Track card colours, pastel takes on the Adobe app colours (see clutter.css).
 const TRACK_COLORS = ["--c-ps", "--c-ai", "--c-ae", "--c-id", "--c-dw", "--c-lr", "--c-xd", "--c-pr", "--c-ac"];
 
-// Clutter's Home: the voice mode. Tapping the mic pulls the background
-// bubbles into a wave that moves with your voice; once the first track
-// appears the wave rises and the tracks line up under it; stopping turns the
-// wave back into the mic at the top. Each stopped session is saved to Studio.
+// Clutter's Home: the voice mode. Tapping the mic fades it out and draws a
+// wave where the wordmark was, which moves with your voice; once the first
+// track appears the wave rises and the tracks line up under it; stopping
+// brings the mic back at the top. Each stopped session is saved to Studio.
 //
 // How it works: the browser gets a short-lived secret from /api/live/token and
 // talks to Grok's realtime voice API directly for transcription and voice,
@@ -337,6 +337,7 @@ export function LiveDemo() {
     const sess = await connectVoice({
       token: body.token,
       model: body.model,
+      voice: body.voice ?? "eve",
       instructions: systemInstruction,
       captions: extras.captions,
       onEvent,
@@ -533,12 +534,18 @@ export function LiveDemo() {
   useEffect(() => {
     if (status !== "listening") return;
     let raf = 0;
+    // The background colour swells a little with the voice too (clutter.css).
+    const aurora = document.querySelector<HTMLElement>(".c-aurora");
     const tick = () => {
       level.current = mic.current?.level() ?? 0;
+      aurora?.style.setProperty("--c-level", Math.min(1, level.current * 2).toFixed(3));
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      aurora?.style.removeProperty("--c-level");
+    };
   }, [status]);
 
   // Close everything if the page is left mid-session.
@@ -549,8 +556,8 @@ export function LiveDemo() {
   const live = listening || status === "connecting";
   const phase = live ? (board.tracks.length ? "tracks" : "wave") : board.tracks.length ? "ended" : "idle";
 
-  // While a session runs or its tracks are on screen, the background bubbles
-  // are pulled into the wave (clutter.css watches this attribute).
+  // While a session runs or its tracks are on screen, the background colour
+  // gathers in a little toward the wave (clutter.css watches this attribute).
   useEffect(() => {
     if (phase === "idle") delete document.body.dataset.clutterSession;
     else document.body.dataset.clutterSession = "";
@@ -638,7 +645,6 @@ export function LiveDemo() {
             <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" />
           </svg>
         </button>
-        <div className="c-mic-shadow" />
         <div className="c-mic-hint">{status === "error" ? "Couldn't start. Open Details for why." : "Tap to start a session"}</div>
       </div>
 

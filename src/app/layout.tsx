@@ -33,6 +33,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <div className="c-backdrop" aria-hidden="true" />
+        {/* New background (clutter.css, .c-aurora): a few soft colour fields that drift slowly. */}
+        <div className="c-aurora" aria-hidden="true">
+          <span className="c-aurora__blob c-aurora__blob--one" />
+          <span className="c-aurora__blob c-aurora__blob--two" />
+          <span className="c-aurora__blob c-aurora__blob--three" />
+          <span className="c-aurora__blob c-aurora__blob--four" />
+        </div>
+        {/* Alana's lava lamp, switched off on 2026-10-11 (its styles are commented out in globals.css).
         <div className="lava-lamp" aria-hidden="true">
           <div className="lava-lamp__float lava-lamp__float--one">
             <span className="lava-lamp__ball lava-lamp__ball--one" />
@@ -56,6 +64,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <span className="lava-lamp__ball lava-lamp__ball--seven" />
           </div>
         </div>
+        */}
         <Nav />
         <ApplyPrefs />
         {children}

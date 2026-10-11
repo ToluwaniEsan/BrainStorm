@@ -126,7 +126,7 @@ export function LiveDemo() {
       const audio = (sc.modelTurn?.parts ?? []).filter((p) => p.inlineData?.data && p.inlineData.mimeType?.startsWith("audio/"));
       const text = sc.outputTranscription?.text ?? "";
       for (const part of sc.modelTurn?.parts ?? []) {
-        if (part.thought && part.text) addLog("thought", "Gemini Live's reasoning", part.text);
+        if (part.thought && part.text) addLog("thought", "Clutter's reasoning (voice)", part.text);
       }
       if (audio.length || text) {
         spokeSinceUser.current = true;
@@ -162,7 +162,7 @@ export function LiveDemo() {
       }
     }
 
-    if (msg.goAway) addLog("info", "Gemini will end this session soon", `Time left: ${msg.goAway.timeLeft ?? "?"}`);
+    if (msg.goAway) addLog("info", "Clutter will end this session soon", `Time left: ${msg.goAway.timeLeft ?? "?"}`);
   }
 
   // Sends what the user said to /api/live/learn, which saves lasting facts
@@ -208,14 +208,14 @@ export function LiveDemo() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Track request failed (${res.status})`);
       filed.current += ` ${text}`;
-      for (const t of (body.thoughts ?? []) as string[]) addLog("thought", "Gemini's reasoning", t);
+      for (const t of (body.thoughts ?? []) as string[]) addLog("thought", "Clutter's reasoning", t);
       let changed = false;
       for (const call of (body.calls ?? []) as { name: string; args: Record<string, unknown> }[]) {
         const { reason, ...rest } = call.args;
         const why = typeof reason === "string" ? `Why: ${reason}` : "";
         if (call.name === "reply_to_user") {
           wantsReply = true;
-          addLog("tool", "You asked Gemini for a response", why);
+          addLog("tool", "You asked Clutter for a response", why);
           continue;
         }
         changed = true;
@@ -244,7 +244,7 @@ export function LiveDemo() {
     } else if (gate.current === "holding") {
       // Words not yet checked may still hold the request; check them first.
       if (pending.current.trim()) void sortPending();
-      else mute("Gemini only speaks when you turn to it for a response.");
+      else mute("Clutter only speaks when you turn to it for a response.");
     }
   }
 
@@ -252,20 +252,24 @@ export function LiveDemo() {
     const res = await fetch("/api/live/token", { method: "POST" });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? `Token request failed (${res.status})`);
-    addLog("info", "Got a one-time Gemini token", `Model: ${body.model}`);
+    addLog("info", "Got a one-time voice token", `Model: ${body.model}`);
 
     const ctx = await fetch("/api/live/context").then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    if (!ctx) addLog("error", "Couldn't load what BrainStorm knows about you", "Gemini starts without it.");
-    else if (!ctx.learningEnabled) addLog("info", "Learning is off", "BrainStorm uses only what's in your profile.");
+    if (!ctx) addLog("error", "Couldn't load what Clutter knows about you", "Clutter starts without it.");
+    else {
+      const { documents = 0, links = 0 } = ctx.sources ?? {};
+      addLog("info", "Clutter has your profile", `${documents} document${documents === 1 ? "" : "s"} and ${links} link${links === 1 ? "" : "s"} it can read.`);
+      if (!ctx.learningEnabled) addLog("info", "Learning is off", "Clutter uses only what's in your profile.");
+    }
     const systemInstruction: string =
-      ctx?.instruction ?? "Stay silent unless the user asks for your response. Then answer briefly and ask a grounding follow-up question.";
+      ctx?.instruction ?? "Your name is Clutter. Stay silent unless the user asks for your response. Then answer briefly and ask a grounding follow-up question.";
 
     const ai = new GoogleGenAI({ apiKey: body.token, httpOptions: { apiVersion: "v1alpha" } });
     // Resolves once Gemini accepts the settings; rejects if it closes first.
     let ready = false;
     let settle: { ok: () => void; fail: (e: Error) => void } = { ok() {}, fail() {} };
     const setup = new Promise<void>((ok, fail) => (settle = { ok, fail }));
-    const timer = setTimeout(() => settle.fail(new Error("Gemini did not answer in time")), 15_000);
+    const timer = setTimeout(() => settle.fail(new Error("Clutter did not answer in time")), 15_000);
     const sess = await ai.live.connect({
       model: body.model,
       config: {
@@ -292,7 +296,7 @@ export function LiveDemo() {
         },
         onerror: (e) => addLog("error", "Connection error", e.message),
         onclose: (e) => {
-          if (!ready) settle.fail(new Error(e.reason || `Gemini closed the connection (code ${e.code})`));
+          if (!ready) settle.fail(new Error(e.reason || `Clutter closed the connection (code ${e.code})`));
           else if (session.current === sess) {
             addLog("info", "Session ended", e.reason || `code ${e.code}`);
             stop();
@@ -330,7 +334,7 @@ export function LiveDemo() {
           break;
         } catch (err) {
           if (i === attempts.length - 1) throw err;
-          addLog("info", "Gemini rejected a setting, retrying with fewer", (err as Error).message);
+          addLog("info", "Voice service rejected a setting, retrying with fewer", (err as Error).message);
         }
       }
       if (!sess) throw new Error("Could not connect");
@@ -339,7 +343,7 @@ export function LiveDemo() {
         return;
       }
       session.current = sess;
-      addLog("info", "Connected to Gemini Live. Start talking.");
+      addLog("info", "Connected to Clutter. Start talking.");
       const m = await startMic((data) =>
         session.current?.sendRealtimeInput({ audio: { data, mimeType: "audio/pcm;rate=16000" } }),
       );
@@ -425,7 +429,7 @@ export function LiveDemo() {
       <section className="flex flex-col items-center gap-3">
         <button
           onClick={listening || status === "connecting" ? stop : start}
-          aria-label={listening ? "Stop listening" : "Start talking to Gemini"}
+          aria-label={listening ? "Stop listening" : "Start talking to Clutter"}
           className={`flex h-24 w-24 items-center justify-center rounded-full text-white transition ${
             listening ? "bg-red-600" : status === "connecting" ? "bg-zinc-500" : "bg-blue-600 hover:bg-blue-700"
           }`}
@@ -443,8 +447,8 @@ export function LiveDemo() {
           </svg>
         </button>
         <p className="text-sm text-zinc-500">
-          {status === "idle" && "Tap the mic and think out loud. Gemini sorts what you say into tracks."}
-          {status === "connecting" && "Connecting to Gemini Live..."}
+          {status === "idle" && "Tap the mic and think out loud. Clutter sorts what you say into tracks."}
+          {status === "connecting" && "Connecting to Clutter..."}
           {listening && "Listening..."}
           {status === "error" && "Something went wrong. See the log below, then try again."}
         </p>
@@ -470,7 +474,7 @@ export function LiveDemo() {
         </div>
         {board.tracks.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
-            No tracks yet. They appear here as Gemini files what you say.
+            No tracks yet. They appear here as Clutter files what you say.
           </p>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-2">
@@ -503,11 +507,11 @@ export function LiveDemo() {
         <section>
           <h2 className="mb-2 text-lg font-semibold">Transcript</h2>
           <div className="flex h-80 flex-col gap-2 overflow-y-auto rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700">
-            {lines.length === 0 && <p className="text-zinc-500">What you say and what Gemini says back shows up here.</p>}
+            {lines.length === 0 && <p className="text-zinc-500">What you say and what Clutter says back shows up here.</p>}
             {lines.map((l) => (
               <p key={l.id}>
                 <span className={`font-medium ${l.who === "you" ? "text-blue-600" : "text-purple-600"}`}>
-                  {l.who === "you" ? "You" : "Gemini"}:
+                  {l.who === "you" ? "You" : "Clutter"}:
                 </span>{" "}
                 {l.text}
               </p>
@@ -518,7 +522,7 @@ export function LiveDemo() {
         <section>
           <h2 className="mb-2 text-lg font-semibold">Track changes and reasoning</h2>
           <ol className="flex h-80 flex-col gap-2 overflow-y-auto rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700">
-            {log.length === 0 && <p className="text-zinc-500">Every tool call Gemini makes, and why, shows up here.</p>}
+            {log.length === 0 && <p className="text-zinc-500">Every tool call Clutter makes, and why, shows up here.</p>}
             {log.map((e) => (
               <li key={e.id} className="border-b border-zinc-200 pb-2 last:border-0 dark:border-zinc-800">
                 <div className="flex gap-2">

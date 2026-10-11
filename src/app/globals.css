@@ -131,7 +131,8 @@ display: block;
 width: clamp(9rem, 24vw, 22rem);
 aspect-ratio: 1;
 border-radius: 50%;
-background: radial-gradient(circle at 50% 50%,
+background: linear-gradient(
+-45deg,
 blue,
 orange,
 purple,

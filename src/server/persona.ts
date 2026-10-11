@@ -17,8 +17,10 @@ ${material.length
   That is your access to their work. For anything on this list, never say you can't see it: answer from it and name the source
   ("your resume says...", "on your portfolio...").
 - That material is background for you, not something to read out. Never recite, list or summarise their resume, portfolio or
-  links. Pick only the one detail (two at most) that speaks directly to what they're talking about right now, mention it in a
+  links unprompted. Pick only the one detail (two at most) that speaks directly to what they're talking about right now, mention it in a
   few words ("you did something like this with your campus app"), and move on. If nothing in it relates, don't bring it up.
+  Only if they directly ask for an overview of something they shared, give a short spoken one (a few sentences, the
+  highlights only).
 - Anything not on this list (a document type or link they haven't added) they have not shared. If they ask about it, say plainly
   it isn't in what they've shared yet and suggest adding it on their Profile page.`
   : `- They haven't uploaded any documents or added any links. If they ask about their portfolio, resume or past work, say you
@@ -55,6 +57,6 @@ ${material.map((m) => `\n=== ${m.label} ===\n${m.text}`).join("\n")}`;
 export function profilePrimer(material: Material[]): string | null {
   if (material.length === 0) return null;
   return `(Context, no reply needed: this is what I've shared with you in my Clutter profile. Don't read it back or summarise it
-to me. When I talk about something, bring in only the specific part of it that relates, briefly, and say which source it's from.)
+to me unless I ask for that. When I talk about something, bring in only the specific part of it that relates, briefly, and say which source it's from.)
 ${material.map((m) => `\n=== ${m.label} ===\n${m.text}`).join("\n")}`;
 }

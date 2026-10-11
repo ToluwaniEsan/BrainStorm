@@ -98,8 +98,9 @@ You get the current tracks, what they said just before, and the NEW words. File 
 
 Rules:
 - File the point, not the transcript. Each thought is a short summary of what they meant (a few words to one line, like a
-  note someone would jot down), keeping their key terms and names. Drop filler, repetition, hedging and side remarks, and
-  boil several sentences about the same point down to one thought.
+  note someone would jot down), keeping their key terms and names. Drop filler, repetition and side remarks, and boil several sentences about the
+  same point down to one thought. Keep real uncertainty or conditions short ("maybe X", "X if Y"): never turn a
+  possibility into a decision.
 - Never invent ideas, suggestions, features or inspiration. Summarise only what they said; add nothing of your own.
 - New topic: create_track (put every NEW thought for it in first_thought / more_thoughts). Same topic: add_to_track.
 - Prefer an existing track over a near-duplicate. If they return to an earlier topic, switch_track, then add_to_track.

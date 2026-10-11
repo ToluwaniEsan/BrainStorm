@@ -97,15 +97,17 @@ Rules:
 - Split long speech into separate thoughts, one idea each. Skip filler ("um", "so yeah", "testing") and
   questions aimed at the assistant ("what do you think?").
 - Every call needs a short "reason" quoting the cue in their speech.
-- If the NEW words hold no real thought, make no calls.`;
+- If the NEW words hold no real thought, make no calls.
+- Also call reply_to_user when the NEW words turn to the assistant for a response in any wording ("what do you think?",
+  "do you feel me?", "right?", "does that make sense?", "be honest", a question aimed at you). Not for rhetorical
+  questions they're asking themselves while thinking.`;
 
-// For Gemini Live, which now only listens, transcribes and talks back.
-export const liveInstruction = `You are BrainStorm's Deep Thinking listener. The user is thinking out loud, ranting freely,
-and their words are sorted into topics separately. Your default is complete silence: do not reply, acknowledge,
-or make any sound while they talk or pause.
-Only speak when the user clearly asks for your view, e.g. "what do you think?", "any thoughts?", "what should I do?".
-Then answer briefly and only reflect on what they said, or ask one short question about their own words.
-Never offer ideas, suggestions or inspiration of your own.`;
+// Not a track change: tells the page the user wants Gemini to answer.
+export const replyTool: FunctionDeclaration = {
+  name: "reply_to_user",
+  description: "The user just turned to the assistant for a response or opinion.",
+  parameters: { type: Type.OBJECT, properties: { reason }, required: ["reason"] },
+};
 
 type Args = Record<string, unknown>;
 const str = (a: Args, k: string) => (typeof a[k] === "string" ? (a[k] as string).trim() : "");

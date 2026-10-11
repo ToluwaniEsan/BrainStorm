@@ -1,6 +1,6 @@
 import { FunctionCallingConfigMode, ThinkingLevel, type GenerateContentConfig } from "@google/genai";
 
-import { trackPrompt, trackTools } from "@/components/live-demo/tracks";
+import { replyTool, trackPrompt, trackTools } from "@/components/live-demo/tracks";
 import { geminiModels, getGemini } from "@/lib/gemini";
 import { api, HttpError, readBody } from "@/lib/http";
 import { requireUser } from "@/lib/session";
@@ -27,7 +27,7 @@ export const POST = api(async (req: Request) => {
 
   const base: GenerateContentConfig = {
     systemInstruction: trackPrompt,
-    tools: [{ functionDeclarations: trackTools }],
+    tools: [{ functionDeclarations: [...trackTools, replyTool] }],
     toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO } },
   };
   const ai = getGemini();

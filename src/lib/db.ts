@@ -40,15 +40,23 @@ export class EmailInUseError extends Error {
 }
 
 // Registers the user (sub, email, name) and creates their schema on first
-// sign-in; safe to call every time. Concurrent first requests for the same sub
-// would race on the registry's unique schema_name, so they take a per-sub lock
-// and run one at a time.
+// sign-in; safe to call every time. Once the schema exists this is one lookup
+// and one update, so it runs without a lock: a request that dies mid-call
+// (a deploy, a closed tab) can leave its connection stuck for minutes, and if
+// it held a lock every later sign-in for that user would time out behind it.
+// Only if that fails (two first sign-ins racing to create the same schema)
+// does it retry once under a per-sub lock, so they run one at a time.
 export async function provisionUser(sub: string, who: Identity = {}): Promise<string> {
-  try {
-    const [row] = await getSql().begin(async (tx) => {
-      await tx`select pg_advisory_xact_lock(hashtext(${"provision:" + sub}))`;
+  const register = (locked: boolean) =>
+    getSql().begin(async (tx) => {
+      if (locked) await tx`select pg_advisory_xact_lock(hashtext(${"provision:" + sub}))`;
       return tx`select app.register_user(${sub}, ${who.email ?? null}, ${who.name ?? null},
         ${who.emailVerified ?? null}) as schema`;
+    });
+  try {
+    const [row] = await register(false).catch((err) => {
+      if ((err as { code?: string }).code === "BS409") throw err;
+      return register(true);
     });
     return row.schema as string;
   } catch (err) {

@@ -146,10 +146,7 @@ body {
 .lava-lamp__float--one {
   top: 4%;
   left: 2%;
-}
-
-.lava-lamp__ball--one {
-  background: linear-gradient(
+    background: linear-gradient(
     -45deg,
     blue,
     orange,
@@ -161,6 +158,10 @@ body {
     yellow,
     darkred
   );
+}
+
+.lava-lamp__ball--one {
+
 }
 
 .lava-lamp__float--two {

@@ -12,12 +12,14 @@
 @keyframes gradientMovement {
   0% {
     background-position: 0% 0%;
+    --radius: 0%;
   }
   50% {
     background-position: 100% 100%;
   }
   100% {
     background-position: 0% 0%;
+    --radius: 100%;
   }
 }
 
@@ -152,7 +154,7 @@ body {
 }
 
 .lava-lamp__ball--one {
-  --ball-gradient: linear-gradient(
+  --ball-gradient: radial-gradient(circle at center,
     blue,
     orange,
     purple,

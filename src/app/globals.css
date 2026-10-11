@@ -12,8 +12,7 @@
 /*
   Alana's lava lamp background. It was switched off on 2026-10-11 for a
   trial background, and switched back on the same day at the user's request.
-  clutter.css keeps the bubbles "grounded": it swaps the long bounces below
-  for a small float near each bubble's spot (see .lava-lamp__ball there).
+  It runs exactly as written below.
 */
 
 @keyframes gradientMovement {

@@ -74,7 +74,7 @@ export function MotionSettings() {
       />
       <Switch
         label="Calm motion"
-        note="Stops the mic bounce and the drifting background. Your device's reduce-motion setting does this too."
+        note="Stops the drifting bubbles and background. Your device's reduce-motion setting does this too."
         checked={calm}
         onChange={(v) => save(PREFS.calm.key, v ? PREFS.calm.on : "0")}
       />

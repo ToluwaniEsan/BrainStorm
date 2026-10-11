@@ -2,17 +2,22 @@
 
 import { useEffect, useRef } from "react";
 
-// Pastel Adobe-style colours, as RGB for canvas gradients.
-const COLORS = ["159,208,255", "200,180,255", "255,159,194", "255,198,144", "166,228,255", "169,238,198"];
+// How long the bubbles take to gather in the middle before the wave appears
+// (matches the .lava-lamp transition in clutter.css).
+const GATHER_MS = 1400;
 
-// The voice wave on Home: layered ribbons that swell with the mic level.
-// `level` is read every frame (0..1), so it is a ref, not a prop that
-// re-renders. `on` grows the wave out from the middle or folds it away.
+// The voice wave on Home: a few plain sine lines, in the ink colour, running
+// across the middle of the screen with soft, tapered ends. They swell with
+// the mic level. `level` is read every frame (0..1), so it is a ref, not a
+// prop that re-renders. `on` eases the wave in (after the bubbles gather) or
+// lets it settle flat and fade.
 export function Wave({ level, on }: { level: React.RefObject<number>; on: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const shown = useRef(on);
+  const since = useRef(0);
   useEffect(() => {
     shown.current = on;
+    since.current = performance.now();
   }, [on]);
 
   useEffect(() => {
@@ -20,17 +25,21 @@ export function Wave({ level, on }: { level: React.RefObject<number>; on: boolea
     const ctx = el?.getContext("2d");
     if (!el || !ctx) return;
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ink = getComputedStyle(el).color || "rgb(74,42,31)";
     let raf = 0;
     let grow = 0;
     let smooth = 0;
+    let phase = 0;
     let last = performance.now();
 
     const draw = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const t = still ? 0 : now / 1000;
-      grow += ((shown.current ? 1 : 0) - grow) * Math.min(1, dt * (still ? 60 : 2.2));
-      smooth += (Math.min(1, (level.current ?? 0) * 2.2) - smooth) * Math.min(1, dt * 10);
+      // Ease in only once the bubbles have gathered; ease out straight away.
+      const target = shown.current && now - since.current > (still ? 0 : GATHER_MS) ? 1 : 0;
+      grow += (target - grow) * Math.min(1, dt * (still ? 60 : 1.6));
+      smooth += (Math.min(1, (level.current ?? 0) * 2.2) - smooth) * Math.min(1, dt * 4);
+      if (!still) phase += dt * (1.2 + smooth * 1.6);
 
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       const w = el.clientWidth;
@@ -41,50 +50,36 @@ export function Wave({ level, on }: { level: React.RefObject<number>; on: boolea
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
-      if (grow > 0.01) {
+      if (grow > 0.005) {
+        const eased = grow * grow * (3 - 2 * grow);
         const mid = h / 2;
-        const span = Math.min(w, 1100) * Math.min(1, 0.25 + grow * 0.75);
+        // Not edge to edge: about two thirds of the screen, wider as it eases in.
+        const span = Math.min(w * 0.72, 900) * (0.35 + eased * 0.65);
         const x0 = (w - span) / 2;
-        const amp = h * 0.46 * (0.3 + smooth * 1.1) * grow;
-        ctx.save();
-        ctx.shadowColor = "rgba(150,60,30,.28)";
-        ctx.shadowBlur = 14;
-        ctx.shadowOffsetY = 4;
-        [0, 1, 2, 3].forEach((li) => {
-          const c = COLORS[li];
-          const k = 1 - li * 0.17;
-          const f = 0.9 + li * 0.45;
-          const ph = li * 1.4;
-          const grad = ctx.createLinearGradient(x0, 0, x0 + span, 0);
-          grad.addColorStop(0, `rgba(${c},0)`);
-          grad.addColorStop(0.2, `rgba(${c},.85)`);
-          grad.addColorStop(0.5, `rgba(${COLORS[(li + 2) % COLORS.length]},.9)`);
-          grad.addColorStop(0.8, `rgba(${c},.85)`);
-          grad.addColorStop(1, `rgba(${c},0)`);
-          const top: [number, number][] = [];
-          const bottom: [number, number][] = [];
-          for (let x = 0; x <= span; x += 4) {
+        const amp = h * 0.36 * (0.18 + smooth * 0.82) * eased;
+        ctx.strokeStyle = ink;
+        ctx.lineCap = "round";
+        // Main line plus two fainter echoes, like a classic voice wave.
+        const lines = [
+          { k: 1, f: 2.2, off: 0, a: 0.85, wdt: 2.4 },
+          { k: 0.6, f: 2.2, off: 0.9, a: 0.35, wdt: 1.6 },
+          { k: 0.35, f: 2.2, off: 1.8, a: 0.2, wdt: 1.2 },
+        ];
+        for (const l of lines) {
+          ctx.globalAlpha = l.a * eased;
+          ctx.lineWidth = l.wdt;
+          ctx.beginPath();
+          for (let x = 0; x <= span; x += 3) {
             const u = x / span;
-            const env = Math.pow(Math.sin(Math.PI * u), 1.6);
-            const y = Math.sin(u * 7 * f + t * (1.6 + li * 0.4) + ph) * 0.6 + Math.sin(u * 13 * f - t * 2.3 + ph) * 0.4;
-            top.push([x0 + x, mid - Math.abs(y) * amp * k * env - 1.5]);
-            bottom.push([x0 + x, mid + Math.abs(Math.sin(u * 9 * f - t * 1.9 + ph * 1.3)) * amp * k * 0.8 * env + 1.5]);
+            // Fades to a flat line at both ends.
+            const env = Math.pow(Math.sin(Math.PI * u), 2);
+            const y = mid + Math.sin(u * Math.PI * 2 * l.f - phase - l.off) * amp * l.k * env;
+            if (x === 0) ctx.moveTo(x0 + x, y);
+            else ctx.lineTo(x0 + x, y);
           }
-          ctx.beginPath();
-          top.forEach(([x, y], j) => (j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-          for (let j = bottom.length - 1; j >= 0; j--) ctx.lineTo(bottom[j][0], bottom[j][1]);
-          ctx.closePath();
-          ctx.globalAlpha = 0.7;
-          ctx.fillStyle = grad;
-          ctx.fill();
-          ctx.globalAlpha = 1;
-          ctx.lineWidth = 3;
-          ctx.strokeStyle = grad;
-          ctx.beginPath();
-          top.forEach(([x, y], j) => (j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
           ctx.stroke();
-        });
-        ctx.restore();
+        }
+        ctx.globalAlpha = 1;
       }
       raf = requestAnimationFrame(draw);
     };

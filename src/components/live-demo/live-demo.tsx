@@ -73,6 +73,8 @@ export function LiveDemo() {
   const studioId = useRef<string | undefined>(undefined); // this board's saved Studio session
   const startedAt = useRef<string | undefined>(undefined);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const savedKey = useRef(""); // what Studio last got, to skip saves with no change
 
   const flash = (text: string, error = false) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -425,40 +427,45 @@ export function LiveDemo() {
     player.current = null;
     level.current = 0;
     setStatus((st) => (st === "error" ? st : "idle"));
-    void sortPending().then(save); // file whatever was said last, then save to Studio
+    void sortPending().then(() => save()); // file whatever was said last, then save to Studio
     void learn();
     if (holdTimer.current) clearTimeout(holdTimer.current);
     gate.current = "idle";
     held.current = { audio: [], text: "", done: false };
   }
 
+  // What would be saved to Studio right now.
+  const snapshot = () => ({
+    id: studioId.current,
+    startedAt: startedAt.current,
+    tracks: boardRef.current.tracks.map((t) => ({ title: t.title, items: t.items.map((i) => i.text) })),
+    lines: linesRef.current.map((l) => ({ who: l.who === "you" ? "you" : "clutter", text: l.text })),
+  });
+
   // Saves the board and transcript to Studio, replacing this board's earlier
-  // save. Waits for a track sort that is still running so its tracks are in.
-  async function save() {
-    for (let i = 0; i < 75 && sorting.current; i++) await new Promise((r) => setTimeout(r, 200));
-    const b = boardRef.current;
-    const said = linesRef.current;
-    if (!b.tracks.length && !said.length) return;
-    try {
-      const res = await fetch("/api/studio", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          id: studioId.current,
-          startedAt: startedAt.current,
-          tracks: b.tracks.map((t) => ({ title: t.title, items: t.items.map((i) => i.text) })),
-          lines: said.map((l) => ({ who: l.who === "you" ? "you" : "clutter", text: l.text })),
-        }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? `Saving failed (${res.status})`);
-      studioId.current = body.id;
-      const n = b.tracks.length;
-      flash(`Saved to Studio${n ? ` with ${n} track${n === 1 ? "" : "s"}` : ""}`);
-    } catch (err) {
-      addLog("error", "Saving to Studio failed", (err as Error).message);
-      flash("Couldn't save this session to Studio. Open Details for why.", true);
-    }
+  // save. Saves run one after another, so the first one's id is known before
+  // the next. `final` (on stop) waits for a running track sort, then says so.
+  function save(final = true): Promise<void> {
+    saveQueue.current = saveQueue.current.then(async () => {
+      if (final) for (let i = 0; i < 75 && sorting.current; i++) await new Promise((r) => setTimeout(r, 200));
+      const data = snapshot();
+      if (!data.tracks.length && !data.lines.length) return;
+      const key = JSON.stringify(data);
+      if (key === savedKey.current && !final) return;
+      try {
+        const res = await fetch("/api/studio", { method: "POST", headers: { "content-type": "application/json" }, body: key });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error ?? `Saving failed (${res.status})`);
+        studioId.current = body.id;
+        savedKey.current = JSON.stringify({ ...data, id: body.id });
+        const n = data.tracks.length;
+        if (final) flash(`Saved to Studio${n ? ` with ${n} track${n === 1 ? "" : "s"}` : ""}`);
+      } catch (err) {
+        addLog("error", "Saving to Studio failed", (err as Error).message);
+        if (final) flash("Couldn't save this session to Studio. Open Details for why.", true);
+      }
+    });
+    return saveQueue.current;
   }
 
   function sendTyped(e: React.FormEvent) {
@@ -480,6 +487,7 @@ export function LiveDemo() {
     unlearned.current = "";
     studioId.current = undefined;
     startedAt.current = undefined;
+    savedKey.current = "";
     setBoard(emptyBoard);
     setLog([]);
     setLines([]);
@@ -525,6 +533,23 @@ export function LiveDemo() {
     if (status !== "listening") return;
     const timer = setInterval(() => void sortPending(), 2000);
     return () => clearInterval(timer);
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // While talking, keep Studio up to date every 20 seconds, so a closed tab
+  // or a dropped connection never loses the discussion.
+  useEffect(() => {
+    if (status !== "listening") return;
+    const timer = setInterval(() => void save(false), 20_000);
+    // Last chance when the page is closed mid-session.
+    const leaving = () => {
+      const data = snapshot();
+      if (data.tracks.length || data.lines.length) navigator.sendBeacon("/api/studio", new Blob([JSON.stringify(data)], { type: "application/json" }));
+    };
+    window.addEventListener("pagehide", leaving);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("pagehide", leaving);
+    };
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mic level for the wave while listening.

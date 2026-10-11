@@ -32,9 +32,22 @@ const json = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
-const card = "flex flex-col gap-4 rounded-xl border border-zinc-300 bg-white/80 p-5 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950/70 dark:text-zinc-100";
-const input = "rounded-md border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700";
-const button = "rounded-md bg-zinc-900 px-4 py-2 text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900";
+const LINK_ICON: Record<string, [string, string]> = {
+  portfolio: ["WEB", "--c-ps"],
+  repository: ["GIT", "--c-ae"],
+  github: ["GIT", "--c-ae"],
+  social: ["@", "--c-id"],
+  web: ["URL", "--c-lr"],
+};
+const fileIcon = (name: string): [string, string] => {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") return ["PDF", "--c-ac"];
+  if (ext === "docx") return ["DOC", "--c-ps"];
+  if (["png", "jpg", "jpeg", "webp"].includes(ext)) return ["IMG", "--c-ai"];
+  return ["TXT", "--c-dw"];
+};
+const tint = (c: string) => ({ "--c": `var(${c})` }) as React.CSSProperties;
+const size = (n: number | null) => (n == null ? "" : n > 1e6 ? `${(n / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1e3))} KB`);
 
 // Profile page: who the user is, the links and documents that back it up,
 // and what Clutter has understood or learned from all of it.
@@ -152,128 +165,164 @@ export function ProfileEditor({ authName, email }: { authName: string; email: st
     }
   };
 
-  if (!profile) return <p className="w-full max-w-3xl">Loading your profile...</p>;
+  if (!profile) return message ? <p className={`c-status ${message.kind === "error" ? "error" : ""}`}>{message.text}</p> : <p className="c-muted">Loading your profile...</p>;
 
+  const shownName = form.displayName || authName || email;
   return (
-    <div className="flex w-full max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Your profile</h1>
+    <div>
+      <div className="c-profile-head">
+        <div className="c-avatar" aria-hidden="true">{(shownName || "?").trim().charAt(0).toUpperCase()}</div>
+        <div className="c-who">
+          <b>{shownName || "Your profile"}</b>
+          <span>{email}</span>
+        </div>
+        <div className="c-stats">
+          <div className="c-stat"><b>{links.length}</b><span>links</span></div>
+          <div className="c-stat"><b>{files.length}</b><span>documents</span></div>
+          <div className="c-stat"><b>{facts.length}</b><span>things learned</span></div>
+        </div>
+      </div>
+
       {message && (
-        <p role="status" className={`rounded-md px-3 py-2 text-sm ${message.kind === "ok" ? "bg-green-100 text-green-900" : "bg-red-100 text-red-900"}`}>
+        <p role="status" className={`c-status ${message.kind === "error" ? "error" : ""}`}>
           {message.text}
         </p>
       )}
 
-      <section className={card}>
-        <h2 className="text-lg font-semibold">About you</h2>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm">Name</span>
-          <input className={input} value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm">Email</span>
-          <input className={`${input} opacity-70`} value={email} readOnly />
-          <span className="text-xs text-zinc-500">From your sign-in. One account per email.</span>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm">Introduce yourself</span>
-          <textarea className={input} rows={3} value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} placeholder="Who you are, what you're into, what you're working towards." />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm">Your work so far</span>
-          <textarea className={input} rows={3} value={form.aboutWork} onChange={(e) => setForm({ ...form, aboutWork: e.target.value })} placeholder="Projects you've done, roles, things you're proud of." />
-        </label>
-        <button className={`${button} self-start`} disabled={busy === "profile"} onClick={() => void saveProfile()}>
-          {busy === "profile" ? "Saving..." : "Save"}
-        </button>
-      </section>
+      <div className="c-grid2">
+        <section className="c-panel">
+          <h2>About you</h2>
+          <label className="c-field">
+            <span>Name</span>
+            <input className="c-input" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
+          </label>
+          <label className="c-field">
+            <span>Email (from your sign-in, one account per email)</span>
+            <input className="c-input" style={{ opacity: 0.7 }} value={email} readOnly />
+          </label>
+          <label className="c-field">
+            <span>Introduce yourself</span>
+            <textarea className="c-input" rows={3} value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} placeholder="Who you are, what you're into, what you're working towards." />
+          </label>
+          <label className="c-field">
+            <span>Your work so far</span>
+            <textarea className="c-input" rows={3} value={form.aboutWork} onChange={(e) => setForm({ ...form, aboutWork: e.target.value })} placeholder="Projects you've done, roles, things you're proud of." />
+          </label>
+          <button className="c-btn" disabled={busy === "profile"} onClick={() => void saveProfile()}>
+            {busy === "profile" ? "Saving..." : "Save"}
+          </button>
+        </section>
 
-      <section className={card}>
-        <h2 className="text-lg font-semibold">Links</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Portfolio sites, GitHub repositories, profiles. Clutter reads each one (GitHub through its API, other pages through Exa).
-        </p>
-        <form
-          className="flex flex-col gap-2 sm:flex-row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (newLink.url.trim()) void addLink();
-          }}
-        >
-          <select className={input} value={newLink.kind} onChange={(e) => setNewLink({ ...newLink, kind: e.target.value })}>
-            {KINDS.map((k) => (
-              <option key={k.value} value={k.value}>{k.label}</option>
-            ))}
-          </select>
-          <input className={`${input} flex-1`} type="url" required placeholder="https://..." value={newLink.url} onChange={(e) => setNewLink({ ...newLink, url: e.target.value })} />
-          <button className={button} disabled={busy === "link"}>{busy === "link" ? "Adding and reading..." : "Add"}</button>
-        </form>
-        <ul className="flex flex-col gap-2">
-          {links.length === 0 && <li className="text-sm text-zinc-500">No links yet.</li>}
-          {links.map((l) => (
-            <li key={l.id} className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="rounded bg-zinc-200 px-2 py-0.5 text-xs dark:bg-zinc-800">{kindLabel(l.kind)}</span>
-              <a href={l.url} target="_blank" rel="noreferrer" className="break-all underline">{l.title ?? l.url}</a>
-              <span className="text-xs text-zinc-500">{l.fetchedAt ? "read" : "not read yet"}</span>
-              <span className="ml-auto flex gap-2">
-                <button className="text-xs underline" disabled={!!busy} onClick={() => void readLink(l.id)}>
-                  {busy === `read-${l.id}` ? "Reading..." : l.fetchedAt ? "Read again" : "Read"}
-                </button>
-                <button className="text-xs text-red-600 underline" disabled={!!busy} onClick={() => void removeLink(l.id)}>Remove</button>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section className="c-panel">
+          <h2>Links Clutter can read</h2>
+          <p className="c-note" style={{ marginBottom: 12 }}>
+            Portfolio sites, GitHub repositories, profiles. Clutter reads each one (GitHub through its API, other pages through Exa).
+          </p>
+          {links.length === 0 && <p className="c-empty">No links yet.</p>}
+          {links.map((l) => {
+            const [label, c] = LINK_ICON[l.kind] ?? LINK_ICON.web;
+            return (
+              <div key={l.id} className="c-item" style={tint(c)}>
+                <div className="c-ic">{label}</div>
+                <div className="c-grow">
+                  <a href={l.url} target="_blank" rel="noreferrer">{l.title ?? l.url}</a>
+                  <small>
+                    {kindLabel(l.kind)} ·{" "}
+                    <button className="c-link" disabled={!!busy} onClick={() => void readLink(l.id)}>
+                      {busy === `read-${l.id}` ? "Reading..." : l.fetchedAt ? "Read again" : "Read"}
+                    </button>{" "}
+                    ·{" "}
+                    <button className="c-link danger" disabled={!!busy} onClick={() => void removeLink(l.id)}>Remove</button>
+                  </small>
+                </div>
+                <span className={`c-tag${l.fetchedAt ? " ok" : ""}`}>{l.fetchedAt ? "Read" : "Not read yet"}</span>
+              </div>
+            );
+          })}
+          <form
+            className="c-row"
+            style={{ marginTop: 12 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newLink.url.trim()) void addLink();
+            }}
+          >
+            <select className="c-input" style={{ width: "auto" }} value={newLink.kind} onChange={(e) => setNewLink({ ...newLink, kind: e.target.value })} aria-label="Link type">
+              {KINDS.map((k) => (
+                <option key={k.value} value={k.value}>{k.label}</option>
+              ))}
+            </select>
+            <input className="c-input" style={{ flex: 1, minWidth: 160, width: "auto" }} type="url" required placeholder="Paste a link..." aria-label="Link" value={newLink.url} onChange={(e) => setNewLink({ ...newLink, url: e.target.value })} />
+            <button className="c-btn" disabled={busy === "link"}>{busy === "link" ? "Adding..." : "Add"}</button>
+          </form>
+        </section>
 
-      <section className={card}>
-        <h2 className="text-lg font-semibold">Documents</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">CV, case studies, briefs. PDF, Word, text or images, up to 10 MB.</p>
-        <input
-          type="file"
-          accept=".pdf,.docx,.txt,.md,.json,image/png,image/jpeg,image/webp"
-          disabled={busy === "upload"}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            e.target.value = "";
-            if (f) void upload(f);
-          }}
-        />
-        {busy === "upload" && <p className="text-sm">Uploading and reading...</p>}
-        <ul className="flex flex-col gap-2">
-          {files.length === 0 && <li className="text-sm text-zinc-500">No documents yet.</li>}
-          {files.map((f) => (
-            <li key={f.id} className="flex items-center gap-2 text-sm">
-              <a href={`/api/files/${f.id}`} className="break-all underline">{f.filename}</a>
-              <button className="ml-auto text-xs text-red-600 underline" disabled={!!busy} onClick={() => void removeFile(f.id)}>Remove</button>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section className="c-panel">
+          <h2>Documents</h2>
+          {files.length === 0 && <p className="c-empty">No documents yet.</p>}
+          {files.map((f) => {
+            const [label, c] = fileIcon(f.filename);
+            return (
+              <div key={f.id} className="c-item" style={tint(c)}>
+                <div className="c-ic">{label}</div>
+                <div className="c-grow">
+                  <a href={`/api/files/${f.id}`}>{f.filename}</a>
+                  <small>
+                    {[size(f.sizeBytes), `added ${new Date(f.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`].filter(Boolean).join(" · ")}
+                  </small>
+                </div>
+                <button className="c-link danger" disabled={!!busy} onClick={() => void removeFile(f.id)}>Remove</button>
+              </div>
+            );
+          })}
+          <label className="c-dropzone" style={{ marginTop: 8 }}>
+            {busy === "upload" ? "Uploading and reading..." : "Add a CV, case study or brief: PDF, Word, text or images, up to 10 MB"}
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt,.md,.json,image/png,image/jpeg,image/webp"
+              disabled={busy === "upload"}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void upload(f);
+              }}
+            />
+          </label>
+        </section>
 
-      <section className={card}>
-        <h2 className="text-lg font-semibold">What Clutter understands about you</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Built only from what you gave it and, if learning is on, what you said. Clutter uses this to ground its questions and
-          only encourages you where your own work backs it up.
-        </p>
-        <pre className="whitespace-pre-wrap font-sans text-sm">{profile.understanding ?? "Nothing yet. Add an intro, links or documents."}</pre>
-        <button className="self-start text-sm underline" disabled={!!busy} onClick={() => void refresh()}>
-          {busy === "refresh" ? "Updating..." : "Update now"}
-        </button>
+        <section className="c-panel">
+          <h2>What Clutter understands about you</h2>
+          <p className="c-note" style={{ marginBottom: 10 }}>
+            Built only from what you gave it and, if learning is on, what you said. Clutter uses this to ground its questions, and
+            only encourages you where your own work backs it up.
+          </p>
+          <p className="c-understanding">{profile.understanding ?? "Nothing yet. Add an intro, links or documents."}</p>
+          <button className="c-link" disabled={!!busy} onClick={() => void refresh()}>
+            {busy === "refresh" ? "Updating..." : "Update now"}
+          </button>
+        </section>
 
-        <h3 className="mt-2 font-semibold">Learned from your conversations</h3>
-        <ul className="flex flex-col gap-2">
-          {facts.length === 0 && <li className="text-sm text-zinc-500">Nothing learned yet.</li>}
-          {facts.map((f) => (
-            <li key={f.id} className="flex items-start gap-2 text-sm">
-              <span>{f.fact}</span>
-              <button className="ml-auto shrink-0 text-xs text-red-600 underline" disabled={!!busy} onClick={() => void removeFact(f.id)}>Forget</button>
-            </li>
-          ))}
-        </ul>
-
-        <LearningToggle enabled={profile.learningEnabled} onChange={setLearning} />
-      </section>
+        <section className="c-panel c-span2">
+          <h2>Learned from your conversations</h2>
+          {facts.length === 0 ? (
+            <p className="c-empty">Nothing learned yet.</p>
+          ) : (
+            <div className="c-facts">
+              {facts.map((f) => (
+                <span key={f.id} className="c-fact">
+                  {f.fact}
+                  <button aria-label={`Forget: ${f.fact}`} title="Forget this" disabled={!!busy} onClick={() => void removeFact(f.id)}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop: 16 }}>
+            <LearningToggle enabled={profile.learningEnabled} onChange={setLearning} />
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

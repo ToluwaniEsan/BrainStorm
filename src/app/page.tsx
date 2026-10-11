@@ -68,7 +68,7 @@ async function Home() {
         <a className="rounded-md bg-foreground px-5 py-3 text-background" href="/auth/login">
           Log in
         </a>
-        <p className="max-w-md text-center text-sm text-zinc-500">
+        <p className="max-w-md text-center text-sm">
           Sign in to continue.
         </p>
         </main>

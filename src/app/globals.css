@@ -27,22 +27,17 @@ body {
   background-color: #ffcfac;
 }
 
-body::before {
-  position: fixed;
+.lava-lamp{
+  overflow: hidden;
+  background: transparent;
+}
+
+.ball::before {
   z-index: -1;
   inset: -15%;
   content: "";
   pointer-events: none;
-  background:
-    radial-gradient(ellipse at 15% 25%, rgb(0 0 255 / 75%) 0%, transparent 38%),
-    radial-gradient(ellipse at 78% 18%, rgb(255 165 0 / 75%) 0%, transparent 36%),
-    radial-gradient(ellipse at 55% 75%, rgb(128 0 128 / 75%) 0%, transparent 40%),
-    radial-gradient(ellipse at 88% 70%, rgb(75 0 130 / 70%) 0%, transparent 36%),
-    radial-gradient(ellipse at 30% 80%, rgb(255 0 255 / 65%) 0%, transparent 34%),
-    radial-gradient(ellipse at 65% 35%, rgb(0 128 128 / 70%) 0%, transparent 34%),
-    radial-gradient(ellipse at 10% 60%, rgb(173 216 230 / 80%) 0%, transparent 38%),
-    radial-gradient(ellipse at 42% 15%, rgb(255 255 0 / 65%) 0%, transparent 32%),
-    radial-gradient(ellipse at 92% 45%, rgb(139 0 0 / 65%) 0%, transparent 34%);
+  background:linear-gradient(-45deg, blue, orange, purple, indigo, magenta, teal, lightblue, yellow, darkred);
   background-size: 160% 160%;
   filter: blur(48px);
   opacity: 0.58;

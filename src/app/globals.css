@@ -141,7 +141,7 @@ body {
   border-radius: 50%;
   background-image: var(--ball-gradient);
   background-position: center;
-  background-size: 50% 50%;
+  background-size: 100% 100%;
   filter: blur(10px);
   opacity: 0.65;
   animation: gradientMovement 18s ease-in-out infinite alternate;

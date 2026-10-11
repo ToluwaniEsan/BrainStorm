@@ -144,7 +144,7 @@ body {
   background-size: 250% 250%;
   filter: blur(10px);
   opacity: 0.65;
-  animation: gradientMovement 18s linear infinite;
+  animation: gradientMovement 18s ease-in-out infinite alternate;
 }
 
 .lava-lamp__float--one {
@@ -154,7 +154,8 @@ body {
 }
 
 .lava-lamp__ball--one {
-  --ball-gradient: radial-gradient(circle at center,
+  --ball-gradient: radial-gradient(
+    circle at center,
     blue,
     orange,
     purple,

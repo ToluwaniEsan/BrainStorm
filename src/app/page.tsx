@@ -55,6 +55,13 @@ async function Home() {
   if (!session) {
     return (
       <body>
+        <div className= "lava-lamp">
+          <div className="ball b1"></div>
+          <div className="ball b2"></div>
+          <div className="ball b3"></div>
+          <div className="ball b4"></div>
+          <div className="ball b5"></div>
+        </div>
         <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8">
         <h1 className="text-4xl font-semibold">Clutter</h1>
         <p>Your creative helper</p>

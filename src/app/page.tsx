@@ -47,7 +47,7 @@ async function Home() {
       <main className="c-shell">
         <div className="c-landing">
           <h1>CLUTTER</h1>
-          <p className="c-muted">Think out loud. Clutter sorts what you say into tracks.</p>
+          <p className="c-muted">Speak. Declutter your mind.</p>
           <a className="c-btn" href="/auth/login">
             Log in
           </a>

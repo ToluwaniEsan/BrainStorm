@@ -30,6 +30,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <span className="lava-lamp__ball lava-lamp__ball--three" />
           <span className="lava-lamp__ball lava-lamp__ball--four" />
           <span className="lava-lamp__ball lava-lamp__ball--five" />
+          <span className="lava-lamp__ball lava-lamp__ball--six" />
+          <span className="lava-lamp__ball lava-lamp__ball--seven" />
         </div>
         {children}
       </body>

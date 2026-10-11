@@ -17,7 +17,7 @@ background-position: 50% 50%;
 background-position: 100% 50%;
 }
 100% {
-background-position: 50% 50%;
+background-position: 0% 50%;
 }
 }
 
@@ -131,8 +131,7 @@ display: block;
 width: clamp(9rem, 24vw, 22rem);
 aspect-ratio: 1;
 border-radius: 50%;
-background: linear-gradient(
--45deg,
+background: radial-gradient(circle at 50% 50%,
 blue,
 orange,
 purple,

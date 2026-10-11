@@ -351,6 +351,17 @@ export function LiveDemo() {
     // Put their documents and links into the conversation itself; voice models
     // follow that more reliably than a long system instruction.
     if (ctx?.primer) sess.sendText(ctx.primer, false);
+    // Picking a session back up (from Studio, or after End session): each
+    // connection starts blank, so tell Clutter what this board already holds.
+    const sofar = boardRef.current.tracks;
+    if (sofar.length) {
+      sess.sendText(
+        `(Context, no reply needed: we're picking up an earlier discussion. These are the tracks so far, in my own words. Don't read them back; just keep them in mind.)\n${sofar
+          .map((t) => `\n=== ${t.title} ===\n${t.items.map((i) => `- ${i.text}`).join("\n")}`)
+          .join("\n")}`.slice(0, 8000),
+        false,
+      );
+    }
     return sess;
   }
 

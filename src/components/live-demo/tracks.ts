@@ -2,13 +2,21 @@
 // this is a test of how Grok splits speech into tracks.
 
 export type Item = { id: string; text: string };
-export type Track = { id: string; title: string; items: Item[] };
-export type Board = { tracks: Track[]; active?: string; next: number };
+// summary: where their thinking on the track stands now, rewritten by the
+// sorter as thoughts land. people: who else they said is there with them.
+export type Track = { id: string; title: string; summary?: string; items: Item[] };
+export type Board = { tracks: Track[]; active?: string; next: number; people?: string[] };
 
 export const emptyBoard: Board = { tracks: [], next: 1 };
 
 // Function tools in the xAI Responses API shape (plain JSON Schema).
 type Tool = { type: "function"; name: string; description: string; parameters: Record<string, unknown> };
+
+const summary = {
+  type: "string",
+  description:
+    "1-2 sentences on where their thinking on this track stands now, covering all its thoughts, in their own terms (what they decided, what's still open, any conditions). Nothing they didn't say.",
+};
 
 const reason = {
   type: "string",
@@ -31,9 +39,10 @@ export const trackTools: Tool[] = [
           items: { type: "string" },
           description: "Any further points from the NEW words that belong in this new track, each a short summary.",
         },
+        summary,
         reason,
       },
-      required: ["title", "first_thought", "reason"],
+      required: ["title", "first_thought", "summary", "reason"],
     },
   },
   {
@@ -52,8 +61,37 @@ export const trackTools: Tool[] = [
   },
   {
     type: "function",
+    name: "update_summary",
+    description: "Rewrite a track's summary after its thoughts changed, so it reflects everything on the track now.",
+    parameters: {
+      type: "object",
+      properties: { track_id: { type: "string" }, summary, reason },
+      required: ["track_id", "summary", "reason"],
+    },
+  },
+  {
+    type: "function",
+    name: "note_people",
+    description:
+      "The user says other people are with them or joining (\"Sam is here\", \"I'm presenting to the judges\", \"my teammate just joined\"). Records who is there.",
+    parameters: {
+      type: "object",
+      properties: {
+        people: {
+          type: "array",
+          items: { type: "string" },
+          description: "Each person or group as they named them (\"Sam\", \"the judges\").",
+        },
+        reason,
+      },
+      required: ["people", "reason"],
+    },
+  },
+  {
+    type: "function",
     name: "switch_track",
-    description: "The user went back to an earlier topic (e.g. 'going back to auth...'). Makes that track active.",
+    description:
+      "The user came back to a topic an existing track already covers, in any wording (\"going back to auth...\", or just talking about that subject again). Makes that track active.",
     parameters: {
       type: "object",
       properties: { track_id: { type: "string" }, reason },
@@ -102,23 +140,34 @@ Rules:
   same point down to one thought. Keep real uncertainty or conditions short ("maybe X", "X if Y"): never turn a
   possibility into a decision.
 - Never invent ideas, suggestions, features or inspiration. Summarise only what they said; add nothing of your own.
-- New topic: create_track (put every NEW thought for it in first_thought / more_thoughts). Same topic: add_to_track.
-- Prefer an existing track over a near-duplicate. If they return to an earlier topic, switch_track, then add_to_track.
+- Before you create a track, check EVERY existing track's title and summary, not just the active one. If the NEW words are
+  about a subject any track already covers, even in different words or after a long detour, they are going back to it:
+  switch_track to it, then add_to_track there. Only create_track for a subject no track covers.
+- New topic: create_track (put every NEW thought for it in first_thought / more_thoughts, and give it a summary).
+- Summaries: after you add, edit, move or merge thoughts on an existing track, call update_summary once for each track that
+  changed, rewriting its summary to cover all its thoughts as they stand now. A track with no summary gets one the next time
+  you touch it.
 - Use move_thought / edit_thought when they correct themselves; merge_tracks only when they say two topics are the same.
 - One idea per thought. If they repeat or rephrase a point already on a track, don't add it again (use edit_thought if
   they sharpened it). Skip filler ("um", "so yeah", "testing") and
   questions aimed at the assistant ("what do you think?").
+- They may be presenting or demoing to other people. Keep filing the substance of what they say about their ideas or work;
+  skip pure presentation patter ("let me show you", "as you can see", greetings).
+- People: when they say someone is with them or joining, call note_people. When they relay or quote someone else's view,
+  start that thought with the person's name ("Sam: launch on campus first").
 - Every call needs a short "reason" quoting the cue in their speech.
-- If the NEW words hold no real thought, make no calls.
-- Also call reply_to_user when the NEW words turn to the assistant for a response in any wording ("what do you think?",
-  "do you feel me?", "right?", "does that make sense?", "be honest", a question aimed at you). Not for rhetorical
-  questions they're asking themselves while thinking.`;
+- If the NEW words hold no real thought, make no calls (note_people and reply_to_user still apply).
+- Also call reply_to_user when the NEW words turn to the assistant (named Clutter) for a response in any wording: "what do
+  you think?", "do you feel me?", "right?", "does that make sense?", "be honest", "Clutter, ...", a question aimed at it,
+  or asking it to say or do something ("say hi to the judges", "introduce yourself", "tell them what you do", "I want to
+  show you off"). Not for rhetorical questions they're asking themselves, and not when they only mention Clutter while
+  talking to someone else about it.`;
 
 // Not a track change: tells the page the user wants Clutter to answer.
 export const replyTool: Tool = {
   type: "function",
   name: "reply_to_user",
-  description: "The user just turned to the assistant for a response or opinion.",
+  description: "The user just turned to the assistant (Clutter) for a response, an opinion, or to say or do something.",
   parameters: { type: "object", properties: { reason }, required: ["reason"] },
 };
 
@@ -148,6 +197,7 @@ export function applyTool(board: Board, name: string, args: Args): { board: Boar
       b.tracks.push({
         id,
         title: str(args, "title") || "Untitled",
+        summary: str(args, "summary") || undefined,
         items: [{ id: itemId, text: str(args, "first_thought") }, ...more.map((t) => ({ id: newId("i"), text: t.trim() }))],
       });
       b.active = id;
@@ -162,6 +212,21 @@ export function applyTool(board: Board, name: string, args: Args): { board: Boar
         t.items.push({ id: itemId, text: str(args, "thought") });
         b.active = t.id;
         created = { item_id: itemId };
+      }
+      break;
+    }
+    case "update_summary": {
+      const t = track(str(args, "track_id"));
+      if (!t) error = "Unknown track_id";
+      else t.summary = str(args, "summary") || t.summary;
+      break;
+    }
+    case "note_people": {
+      const named = Array.isArray(args.people) ? args.people.filter((p): p is string => typeof p === "string" && !!p.trim()).map((p) => p.trim()) : [];
+      if (!named.length) error = "people must list at least one name";
+      else {
+        const known = b.people ?? [];
+        b.people = [...known, ...named.filter((p) => !known.some((k) => k.toLowerCase() === p.toLowerCase()))];
       }
       break;
     }
@@ -201,6 +266,7 @@ export function applyTool(board: Board, name: string, args: Args): { board: Boar
   const tracks = (error ? board : b).tracks.map((t) => ({
     track_id: t.id,
     title: t.title,
+    summary: t.summary ?? "",
     items: t.items.map((i) => ({ item_id: i.id, text: i.text })),
   }));
   return { board: error ? board : b, result: error ? { ok: false, error, tracks } : { ok: true, ...created, tracks } };

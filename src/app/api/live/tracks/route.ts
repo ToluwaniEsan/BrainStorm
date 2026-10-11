@@ -7,12 +7,13 @@ import { functionCalls, reasoningSummaries, respond, xaiModels } from "@/lib/xai
 // talks, so a fast text model does the sorting. Nothing is saved here.
 export const POST = api(async (req: Request) => {
   await requireUser();
-  const b = (await readBody(req)) as { text?: unknown; earlier?: unknown; tracks?: unknown; active?: unknown };
+  const b = (await readBody(req)) as { text?: unknown; earlier?: unknown; tracks?: unknown; active?: unknown; people?: unknown };
   const text = typeof b.text === "string" ? b.text.trim().slice(0, 4000) : "";
   if (!text) throw new HttpError(400, "text is required");
   const earlier = typeof b.earlier === "string" ? b.earlier.slice(-1500) : "";
   const tracks = JSON.stringify(Array.isArray(b.tracks) ? b.tracks : []).slice(0, 20000);
   const active = typeof b.active === "string" ? b.active : "none";
+  const people = Array.isArray(b.people) ? b.people.filter((p): p is string => typeof p === "string").slice(0, 20).join(", ").slice(0, 500) : "";
 
   const res = await respond({
     model: xaiModels.fast,
@@ -22,6 +23,7 @@ export const POST = api(async (req: Request) => {
         role: "user",
         content:
           `Current tracks (JSON): ${tracks}\nActive track: ${active}\n` +
+          (people ? `Also with them (as they said): ${people}\n` : "") +
           (earlier ? `What they said just before (already filed): """${earlier}"""\n` : "") +
           `NEW words to file now: """${text}"""`,
       },

@@ -19,7 +19,7 @@
 # Tools:
 * Next
 * Auth0
-* gemini
+* Grok (xAI)
 * Supabase
 * Drizzle
 * Exa
@@ -66,7 +66,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 2. Copy `.env.example` to `.env.local` and fill in the values. `.env.local` is git-ignored, so keys never reach the repo.
    For Supabase, follow [db/README.md](db/README.md): it runs `npm run db:migrate` and sets up the app's database role.
 3. Run the checks for the keys you've filled in:
-   - `npm run check:gemini` confirms the Gemini key and model id.
+   - `npm run check:xai` confirms the xAI key and model id.
    - `npm run check:db` confirms both Supabase Postgres connection strings (and that pgvector is available).
    - `npm run check:storage` confirms the Supabase secret key and that the private uploads bucket exists.
    - `npm run check:exa` confirms the Exa key with one small search.
@@ -78,7 +78,7 @@ All service code lives in `src/lib` and is server-only (`import "server-only"`),
 
 | File | Service | Env vars |
 | --- | --- | --- |
-| `gemini.ts` | Gemini | `GEMINI_API_KEY`, `GEMINI_*_MODEL` |
+| `xai.ts` | xAI Grok: realtime voice, text, file reading | `XAI_API_KEY`, `XAI_*_MODEL` |
 | `db.ts` | Supabase Postgres through Drizzle, one schema per user with RLS | `DATABASE_URL` (app), `DIRECT_DATABASE_URL` (migrations) |
 | `supabase-storage.ts` | Supabase Storage (uploaded files) | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` |
 | `exa.ts` | Exa search and page contents | `EXA_API_KEY` |
@@ -97,14 +97,14 @@ signed-in user's own schema. The first call provisions that schema.
 | `/api/profile` | GET, PUT | Read or save the profile (including `learningEnabled`). |
 | `/api/projects`, `/api/projects/:id`, `/api/projects/:id/tasks`, `/api/tasks/:id` | CRUD | Projects, sub-projects and tasks. |
 | `/api/tracks`, `/api/tracks/:id`, `/api/tracks/:id/items`, `/api/track-items/:id` | CRUD | Deep Thinking tracks and their items (move an item by PATCHing `trackId`). |
-| `/api/live/token` | POST | One-use Gemini Live token for the browser socket. |
-| `/api/live/context` | GET | Gemini Live instructions for this user, built from what Clutter understands about them. |
-| `/api/live/tracks` | POST | Gemini Flash sorts new transcript text into track changes and says if the user asked for a reply. |
+| `/api/live/token` | POST | Short-lived Grok voice secret for the browser socket. |
+| `/api/live/context` | GET | Voice instructions for this user, built from what Clutter understands about them. |
+| `/api/live/tracks` | POST | A fast Grok model sorts new transcript text into track changes and says if the user asked for a reply. |
 | `/api/live/learn` | POST | Saves lasting facts about the user from what they said (skipped when learning is off). |
 | `/api/facts`, `/api/facts/:id` | GET, DELETE | What Clutter learned from conversations; the user can forget any of it. |
 | `/api/profile/understanding` | POST | Rebuilds the summary of the user from their profile, links, files and learned facts. |
 | `/api/live/sessions`, `/api/live/sessions/:id`, `/api/live/sessions/:id/transcripts` | GET, POST, PATCH | Voice sessions and their text transcripts (no audio is stored). |
-| `/api/memory`, `/api/memory/search?q=` | POST, GET | Index text into memory; semantic search over the user's own memory. |
+| `/api/memory`, `/api/memory/search?q=` | POST, GET | Index text into memory; word search (Postgres full-text) over the user's own memory. |
 | `/api/search` | POST | Exa search, only when the user is stuck and asks (`query` + `triggerText`). |
 | `/api/links`, `/api/links/:id`, `/api/links/:id/fetch` | GET, POST, DELETE | Saved links; fetch reads GitHub repos via the GitHub API and other pages via Exa, then indexes them. |
 | `/api/files`, `/api/files/:id` | GET, POST, DELETE | Uploads (10 MB max) to private Storage; text is extracted (PDF, Word, text, images) and indexed. |

@@ -10,8 +10,8 @@ import { liveInstruction, profilePrimer, type Material } from "@/server/persona"
 const PER_SOURCE = 6000;
 const TOTAL = 16000;
 
-// The Live system instruction for the signed-in user, built from what
-// Clutter knows about them. The browser passes it to Gemini Live.
+// The voice system instruction for the signed-in user, built from what
+// Clutter knows about them. The browser passes it to the realtime voice model.
 export const GET = api(async () => {
   const user = await requireUser();
   const [p, fs, ls] = await withUser(user.sub, (tx) =>

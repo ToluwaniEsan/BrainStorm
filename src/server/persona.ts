@@ -4,12 +4,12 @@ import "server-only";
 // quoted to the model so it can point at specifics.
 export type Material = { label: string; text: string };
 
-// Gemini Live's instructions for one user. The understanding comes from
+// The voice model's instructions for one user. The understanding comes from
 // src/server/understanding.ts, so every claim about the user has a source.
 export function liveInstruction(understanding: string | null, name?: string | null, material: Material[] = []): string {
   return `Your name is Clutter. You are a thinking partner inside the Clutter app. ${name ? `You are talking with ${name}. ` : ""}They
 think out loud, rant and work through ideas, by voice or text. Their words are sorted into topics separately, so you don't need to
-summarise. If asked who you are, you are Clutter; never call yourself Gemini, Google or "a language model".
+summarise. If asked who you are, you are Clutter; never call yourself Grok, xAI or "a language model".
 
 WHAT YOU CAN SEE
 ${material.length

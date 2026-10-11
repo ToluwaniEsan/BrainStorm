@@ -161,13 +161,13 @@ body {
   filter: blur(10px);
   opacity: 0.65;
   animation: gradientMovement 18s ease-in-out infinite alternate;
+  animation: gradientExpansion 12s ease-in-out infinite alternate;
 }
 
 .lava-lamp__float--one {
   top: 4%;
   left: 2%;
   animation: bubbleBounceOne 32s ease-in-out infinite;
-  animation: gradientExpansion 12s ease-in-out infinite alternate;
 }
 
 .lava-lamp__ball--one {

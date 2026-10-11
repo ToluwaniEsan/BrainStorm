@@ -253,7 +253,7 @@ export function ProfileEditor({ authName, email }: { authName: string; email: st
       <section className={card}>
         <h2 className="text-lg font-semibold">What Clutter understands about you</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Built only from what you gave it and, if learning is on, what you said. Gemini uses this to ground its questions and
+          Built only from what you gave it and, if learning is on, what you said. Clutter uses this to ground its questions and
           only encourages you where your own work backs it up.
         </p>
         <pre className="whitespace-pre-wrap font-sans text-sm">{profile.understanding ?? "Nothing yet. Add an intro, links or documents."}</pre>

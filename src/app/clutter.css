@@ -1,7 +1,7 @@
 /*
   Clutter interface styles (Home, Studio, Profile, Settings, the floating bar).
-  Kept apart from globals.css, which holds Alana's lava lamp and is hers.
-  Everything here is prefixed c- so it can't collide with her classes.
+  Kept apart from globals.css, which keeps Alana's lava lamp (now commented
+  out). Everything here is prefixed c- so it can't collide with her classes.
 */
 
 :root {
@@ -36,7 +36,7 @@
   --c-font-mark: var(--font-unbounded), var(--font-dm-sans), sans-serif;
 }
 
-/* Warm background that drifts between peach tones, under the lava lamp. */
+/* Warm base that drifts between peach tones, under the colour fields. */
 .c-backdrop {
   position: fixed;
   inset: 0;
@@ -63,17 +63,53 @@
   50% { transform: translate3d(-75%, 0, 0); }
 }
 
-/* While a session runs, the bubbles drift into the middle and fade away
-   behind the wave as it appears. Only the container moves; the bubbles keep their own motion. */
-.lava-lamp {
-  transition: transform 2.2s var(--c-ease), opacity 1.4s ease;
-  transform-origin: 50% 50%;
-  will-change: transform, opacity;
+body { background-color: var(--c-peach); }
+
+/* The background: four large, soft colour fields (cool pastels on the warm
+   base) that drift slowly, like Gemini's glow but full screen. Each field is
+   a radial gradient that fades to nothing, so no blur filter is needed and
+   the GPU only moves layers it already has. Sized from the viewport, so the
+   same picture holds on a phone and a wide screen. */
+.c-aurora {
+  position: fixed;
+  /* Bigger than the screen, so gathering in (scaling down) never shows an edge. */
+  inset: -12%;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: transform 1.6s var(--c-ease), opacity 1.2s ease;
+  transform-origin: 50% 45%;
 }
-body[data-clutter-session] .lava-lamp {
-  transform: scale(0.08);
-  opacity: 0;
-  transition: transform 2.2s var(--c-ease), opacity 1.1s ease 1.2s;
+.c-aurora__blob {
+  position: absolute;
+  width: 72vmax;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--blob) 0%, transparent 62%);
+  opacity: 0.75;
+  will-change: transform;
+  animation: c-drift-a 34s ease-in-out infinite alternate;
+}
+.c-aurora__blob--one { --blob: var(--c-ps); top: -30vmax; left: -24vmax; }
+.c-aurora__blob--two { --blob: var(--c-id); top: -30vmax; right: -26vmax; animation-name: c-drift-b; animation-duration: 41s; }
+.c-aurora__blob--three { --blob: var(--c-ae); bottom: -32vmax; left: -14vmax; animation-name: c-drift-b; animation-duration: 37s; animation-direction: alternate-reverse; }
+.c-aurora__blob--four { --blob: var(--c-ai); bottom: -30vmax; right: -20vmax; animation-duration: 45s; animation-direction: alternate-reverse; }
+@keyframes c-drift-a {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(9vmax, 6vmax, 0) scale(1.08); }
+  100% { transform: translate3d(3vmax, 12vmax, 0) scale(0.96); }
+}
+@keyframes c-drift-b {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-8vmax, 7vmax, 0) scale(0.94); }
+  100% { transform: translate3d(-12vmax, 2vmax, 0) scale(1.06); }
+}
+/* While a session runs, the colour gathers gently toward the wave and
+   swells a little with the voice (--c-level, 0..1, set by the Home page). */
+body[data-clutter-session] .c-aurora {
+  transform: scale(0.9);
+  scale: calc(1 + var(--c-level, 0) * 0.1);
+  transition: transform 1.6s var(--c-ease), scale 0.2s linear;
 }
 
 /* ---------- floating bar ---------- */
@@ -153,6 +189,8 @@ body[data-clutter-session] .lava-lamp {
 
 /* ---------- shared bits ---------- */
 .c-shell {
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-height: 100vh;
   color: var(--c-ink);
@@ -327,23 +365,26 @@ textarea.c-input { resize: vertical; }
 .c-mark {
   position: absolute;
   left: 50%;
-  top: 42%;
+  top: 40%;
   transform: translate(-50%, -50%);
   text-align: center;
   width: calc(100vw - 32px);
-  transition: opacity 1.1s ease, transform 1.6s var(--c-ease);
+  transition: opacity 0.6s ease, transform 0.9s var(--c-ease);
 }
 .c-mark h1 {
   margin: 0;
   font: 700 clamp(44px, 10vw, 96px) / 1 var(--c-font-mark);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
+  /* Letter spacing adds space after the last letter too; this keeps the word centred. */
+  margin-right: -0.1em;
   color: var(--c-ink);
   text-shadow: 0 2px 24px rgba(255, 255, 255, 0.55);
 }
-.c-mark p { margin: 12px 0 0; color: var(--c-ink-soft); font-size: 15px; }
+.c-mark p { margin: 14px 0 0; color: var(--c-ink-soft); font-size: clamp(14px, 1.6vw, 16px); }
+/* On tap the wordmark lifts away and the wave takes its place. */
 .c-home[data-phase="wave"] .c-mark,
 .c-home[data-phase="tracks"] .c-mark,
-.c-home[data-phase="ended"] .c-mark { opacity: 0; transform: translate(-50%, -50%) scale(0.92); pointer-events: none; }
+.c-home[data-phase="ended"] .c-mark { opacity: 0; transform: translate(-50%, -62%); pointer-events: none; }
 
 .c-mic-wrap {
   position: absolute;
@@ -351,16 +392,17 @@ textarea.c-input { resize: vertical; }
   top: 0;
   /* Position moves with translate (GPU) rather than top (relayout every frame).
      Kept apart from transform: the CSS build folds the two together otherwise. */
-  translate: -50% calc(71dvh - 50%);
+  translate: -50% calc(66dvh - 50%);
   display: grid;
   place-items: center;
   z-index: 5;
-  will-change: translate, scale, opacity;
-  transition: translate 1.8s var(--c-ease), scale 1.8s var(--c-ease), opacity 0.9s ease 1s;
+  transition: translate 1.2s var(--c-ease), scale 0.5s var(--c-ease), opacity 0.4s ease;
 }
+/* A glass button with a slow colour halo and a soft ring that ripples out,
+   so it reads as "tap me" without bouncing around. */
 .c-mic {
-  width: 88px;
-  height: 88px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
   border: 0;
   cursor: pointer;
@@ -368,41 +410,47 @@ textarea.c-input { resize: vertical; }
   display: grid;
   place-items: center;
   color: var(--c-ink);
-  background: radial-gradient(circle at 35% 30%, #fffaf5 0%, #ffe6d3 55%, #ffd2b5 100%);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.65), 0 14px 30px -8px rgba(170, 80, 45, 0.45), 0 0 40px 6px rgba(255, 170, 190, 0.35);
-  animation: c-bounce 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  background: radial-gradient(circle at 35% 30%, #fffdfb 0%, #fff1e6 58%, #ffe2cf 100%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 18px 36px -14px rgba(150, 70, 40, 0.5);
+  transition: transform 0.35s var(--c-ease-out), box-shadow 0.35s ease;
 }
 .c-mic::before {
   content: "";
   position: absolute;
-  inset: -6px;
+  inset: -12px;
   border-radius: 50%;
   z-index: -1;
   background: conic-gradient(var(--c-ps), var(--c-ae), var(--c-id), var(--c-ai), var(--c-dw), var(--c-ps));
-  filter: blur(10px);
-  opacity: 0.75;
-  animation: c-spin 8s linear infinite;
+  filter: blur(14px);
+  opacity: 0.6;
+  animation: c-spin 14s linear infinite;
+  transition: opacity 0.35s ease;
 }
-.c-mic:focus-visible { outline: 3px solid var(--c-ink); outline-offset: 6px; }
-.c-mic:disabled { cursor: progress; animation-play-state: paused; }
-.c-mic svg { width: 32px; height: 32px; }
-.c-mic-shadow {
-  width: 70px;
-  height: 14px;
-  margin-top: 18px;
+.c-mic::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  background: radial-gradient(rgba(140, 60, 30, 0.32), transparent 70%);
-  animation: c-shadow 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  animation: c-ripple 3.2s var(--c-ease-out) infinite;
+  pointer-events: none;
 }
-.c-mic-hint { position: absolute; top: calc(100% + 8px); white-space: nowrap; font-size: 13px; color: var(--c-ink-faint); }
-@keyframes c-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-@keyframes c-shadow { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(0.72); opacity: 0.55; } }
+.c-mic:hover { transform: scale(1.05); }
+.c-mic:hover::before { opacity: 0.85; }
+.c-mic:active { transform: scale(0.95); }
+.c-mic:focus-visible { outline: 3px solid var(--c-ink); outline-offset: 8px; }
+.c-mic:disabled { cursor: progress; }
+.c-mic svg { width: 30px; height: 30px; }
+.c-mic-hint { position: absolute; top: calc(100% + 16px); white-space: nowrap; font-size: 13px; color: var(--c-ink-faint); }
+@keyframes c-ripple { 0% { transform: scale(1); opacity: 0.8; } 70%, 100% { transform: scale(1.55); opacity: 0; } }
 @keyframes c-spin { to { transform: rotate(360deg); } }
 
-/* The mic rises into the wave, rides to the top with it, and comes back there. */
-.c-home[data-phase="wave"] .c-mic-wrap { translate: -50% calc(50dvh - 50%); opacity: 0; scale: 0.5; pointer-events: none; }
-.c-home[data-phase="tracks"] .c-mic-wrap { translate: -50% calc(158px - 50%); opacity: 0; scale: 0.5; pointer-events: none; }
-.c-home[data-phase="ended"] .c-mic-wrap { translate: -50% calc(158px - 50%); transition: opacity 1.1s ease 0.5s, scale 1.4s var(--c-ease-out) 0.5s; }
+/* On tap the mic sinks back and fades where it is, while the wave draws in
+   where the wordmark was. When the session ends it comes back at the top. */
+.c-home[data-phase="wave"] .c-mic-wrap,
+.c-home[data-phase="tracks"] .c-mic-wrap { opacity: 0; scale: 0.7; pointer-events: none; }
+.c-home[data-phase="tracks"] .c-mic-wrap { translate: -50% calc(150px - 50%); }
+.c-home[data-phase="ended"] .c-mic-wrap { translate: -50% calc(150px - 50%); scale: 0.82; transition: translate 1.2s var(--c-ease), scale 0.9s var(--c-ease-out) 0.3s, opacity 0.8s ease 0.3s; }
 .c-home[data-phase="ended"] .c-mic-hint { display: none; }
 
 .c-stage {
@@ -413,11 +461,10 @@ textarea.c-input { resize: vertical; }
   /* Fixed size: the stage slides up with translate, and the wave itself
      draws smaller at the top, so nothing relayouts or resizes mid-move. */
   height: 200px;
-  translate: 0 calc(50dvh - 100px);
+  translate: 0 calc(40dvh - 100px);
   opacity: 0;
   pointer-events: none;
-  will-change: translate, opacity;
-  transition: translate 1.8s var(--c-ease), opacity 1.2s ease;
+  transition: translate 1.4s var(--c-ease), opacity 0.8s ease;
 }
 .c-home[data-phase="wave"] .c-stage,
 .c-home[data-phase="tracks"] .c-stage { opacity: 1; }
@@ -547,7 +594,7 @@ textarea.c-input { resize: vertical; }
 
 /* signed-out landing */
 .c-landing { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 18px; padding: 16px; text-align: center; }
-.c-landing h1 { margin: 0; font: 700 clamp(44px, 10vw, 96px) / 1 var(--c-font-mark); letter-spacing: 0.06em; }
+.c-landing h1 { margin: 0 -0.1em 0 0; font: 700 clamp(44px, 10vw, 96px) / 1 var(--c-font-mark); letter-spacing: 0.1em; }
 
 /* ---------- Studio ---------- */
 .c-studio { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
@@ -653,17 +700,41 @@ mark.c-hit { background: rgba(255, 198, 144, 0.75); color: inherit; border-radiu
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .c-backdrop::before, .c-bar::before, .c-mic, .c-mic::before, .c-mic-shadow { animation: none; }
+  .c-backdrop::before, .c-bar::before, .c-aurora__blob, .c-mic::before, .c-mic::after { animation: none; }
   .c-card, .c-card li, ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation-duration: 0.001ms; animation-delay: 0s; }
-  .lava-lamp, .c-mic-wrap, .c-stage, .c-under, .c-mark, .c-toast, .c-bar-pill { transition-duration: 0.001ms; }
+  .c-aurora, .c-mic-wrap, .c-stage, .c-under, .c-mark, .c-toast, .c-bar-pill { transition-duration: 0.001ms; }
 }
 
 /* Settings > Look and motion (set by components/prefs.tsx). */
-body[data-clutter-no-bubbles] .lava-lamp { display: none; }
+body[data-clutter-no-bubbles] .c-aurora { display: none; }
 body[data-clutter-calm] .c-backdrop::before,
 body[data-clutter-calm] .c-bar::before,
-body[data-clutter-calm] .c-mic,
 body[data-clutter-calm] .c-mic::before,
-body[data-clutter-calm] .c-mic-shadow,
-body[data-clutter-calm] .lava-lamp__float,
-body[data-clutter-calm] .lava-lamp__ball { animation-play-state: paused; }
+body[data-clutter-calm] .c-mic::after,
+body[data-clutter-calm] .c-aurora__blob { animation-play-state: paused; }
+
+/* ---------- loading ---------- */
+.c-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 160px;
+  width: 100%;
+  color: var(--c-ink-soft);
+  font: 500 14px var(--c-font);
+}
+.c-loading.page { min-height: 100dvh; }
+.c-loading-dots { display: flex; gap: 8px; }
+.c-loading-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c-ink-soft);
+  animation: c-dot 1.2s var(--c-ease) infinite;
+}
+.c-loading-dots i:nth-child(2) { animation-delay: 0.15s; }
+.c-loading-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes c-dot { 0%, 80%, 100% { transform: translateY(0); opacity: 0.35; } 40% { transform: translateY(-6px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .c-loading-dots i { animation: none; opacity: 0.6; } }

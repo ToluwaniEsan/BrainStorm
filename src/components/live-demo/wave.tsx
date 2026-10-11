@@ -2,14 +2,14 @@
 
 import { useEffect, useRef } from "react";
 
-// How long the bubbles take to gather in the middle before the wave appears
-// (matches the .lava-lamp transition in clutter.css).
-const GATHER_MS = 1400;
+// A short beat after the tap, so the mic and wordmark fade first and the
+// wave draws in after them (see .c-mic-wrap and .c-mark in clutter.css).
+const GATHER_MS = 350;
 
 // The voice wave on Home: a few plain sine lines, in the ink colour, running
 // across the middle of the screen with soft, tapered ends. They swell with
 // the mic level. `level` is read every frame (0..1), so it is a ref, not a
-// prop that re-renders. `on` eases the wave in (after the bubbles gather) or
+// prop that re-renders. `on` eases the wave in (after the mic fades) or
 // lets it settle flat and fade. `compact` shrinks it as it rides to the top;
 // the canvas keeps its size and the wave eases smaller inside it, so the move
 // never forces a resize.
@@ -42,7 +42,7 @@ export function Wave({ level, on, compact }: { level: React.RefObject<number>; o
     const draw = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      // Ease in only once the bubbles have gathered; ease out straight away.
+      // Ease in once the mic has faded; ease out straight away.
       const target = shown.current && now - since.current > (still ? 0 : GATHER_MS) ? 1 : 0;
       grow += (target - grow) * Math.min(1, dt * (still ? 60 : 1.6));
       smooth += (Math.min(1, (level.current ?? 0) * 2.2) - smooth) * Math.min(1, dt * 4);

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { ProfileEditor } from "@/components/profile/profile-editor";
 import { auth0 } from "@/lib/auth0";
+import { PageLoading } from "@/components/loading";
 
 async function Profile() {
   const session = await auth0.getSession();
@@ -19,7 +20,7 @@ async function Profile() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<main className="c-shell"><div className="c-page"><p className="c-muted">Loading...</p></div></main>}>
+    <Suspense fallback={<PageLoading />}>
       <Profile />
     </Suspense>
   );

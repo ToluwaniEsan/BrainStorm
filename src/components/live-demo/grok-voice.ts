@@ -18,6 +18,7 @@ export type VoiceSession = {
 type Options = {
   token: string;
   model: string;
+  voice: string;
   instructions: string;
   // Live captions of the user's speech while they talk. Off on the retry if
   // the API rejects the setting.
@@ -62,14 +63,15 @@ export function connectVoice(o: Options): Promise<VoiceSession> {
         type: "session.update",
         session: {
           instructions: o.instructions,
-          voice: "eve",
+          voice: o.voice,
           turn_detection: { type: "server_vad" },
           audio: {
             input: {
               format: { type: "audio/pcm", rate: 16000 },
               ...(o.captions ? { transcription: { model: "grok-transcribe" } } : {}),
             },
-            output: { format: { type: "audio/pcm", rate: 24000 } },
+            // A touch quicker than normal speech, so Clutter sounds lively.
+            output: { format: { type: "audio/pcm", rate: 24000 }, speed: 1.12 },
           },
         },
       });

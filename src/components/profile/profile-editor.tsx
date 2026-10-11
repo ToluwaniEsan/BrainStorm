@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { LearningToggle } from "./learning-toggle";
+import { Loading } from "@/components/loading";
 
 type Profile = {
   displayName: string | null; intro: string | null; aboutWork: string | null;
@@ -184,7 +185,7 @@ export function ProfileEditor({ authName, email }: { authName: string; email: st
     }
   };
 
-  if (!profile) return message ? <p className={`c-status ${message.kind === "error" ? "error" : ""}`}>{message.text}</p> : <p className="c-muted">Loading your profile...</p>;
+  if (!profile) return message ? <p className={`c-status ${message.kind === "error" ? "error" : ""}`}>{message.text}</p> : <Loading label="Loading your profile" />;
 
   const shownName = form.displayName || authName || email;
   return (

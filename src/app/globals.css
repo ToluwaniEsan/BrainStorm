@@ -131,6 +131,39 @@ body {
   width: clamp(9rem, 24vw, 22rem);
   aspect-ratio: 1;
   border-radius: 50%;
+  
+  background-size: 300% 300%;
+  filter: blur(10px);
+  opacity: 0.65;
+  animation:
+    gradientMovement 25s ease-in infinite,
+    bubbleBounceOne 32s ease-in-out infinite;
+}
+
+.lava-lamp__ball--one {
+  top: 4%;
+  left: 2%;
+
+  background: linear-gradient(
+    -30deg,
+    blue,
+    orange,
+    purple,
+    indigo,
+    magenta,
+    teal,
+    lightblue,
+    yellow,
+    darkred
+  );
+}
+
+.lava-lamp__ball--two {
+  top: 5%;
+  left: 58%;
+  animation-name: gradientMovement, bubbleBounceTwo;
+  animation-duration: 25s, 38s;
+
   background: linear-gradient(
     -45deg,
     blue,
@@ -143,29 +176,23 @@ body {
     yellow,
     darkred
   );
-  background-size: 300% 300%;
-  filter: blur(10px);
-  opacity: 0.65;
-  animation:
-    gradientMovement 25s ease-in infinite,
-    bubbleBounceOne 32s ease-in-out infinite;
-}
-
-.lava-lamp__ball--one {
-  top: 4%;
-  left: 2%;
-}
-
-.lava-lamp__ball--two {
-  top: 5%;
-  left: 58%;
-  animation-name: gradientMovement, bubbleBounceTwo;
-  animation-duration: 25s, 38s;
 }
 
 .lava-lamp__ball--three {
   top: 43%;
   left: 24%;
+  background: linear-gradient(
+    -25deg,
+    blue,
+    orange,
+    purple,
+    indigo,
+    magenta,
+    teal,
+    lightblue,
+    yellow,
+    darkred
+  );
   animation-name: gradientMovement, bubbleBounceThree;
   animation-duration: 25s, 35s;
 }
@@ -173,6 +200,18 @@ body {
 .lava-lamp__ball--four {
   top: 58%;
   left: 72%;
+  background: linear-gradient(
+    -40deg,
+    blue,
+    orange,
+    purple,
+    indigo,
+    magenta,
+    teal,
+    lightblue,
+    yellow,
+    darkred
+  );
   animation-name: gradientMovement, bubbleBounceFour;
   animation-duration: 25s, 41s;
 }
@@ -180,6 +219,18 @@ body {
 .lava-lamp__ball--five {
   top: 72%;
   left: 6%;
+  background: linear-gradient(
+    -20deg,
+    blue,
+    orange,
+    purple,
+    indigo,
+    magenta,
+    teal,
+    lightblue,
+    yellow,
+    darkred
+  );
   animation-name: gradientMovement, bubbleBounceFive;
   animation-duration: 25s, 37s;
 }
@@ -187,6 +238,18 @@ body {
 .lava-lamp__ball--six {
   top: 20%;
   left: 40%;
+  background: linear-gradient(
+    -45deg,
+    blue,
+    orange,
+    purple,
+    indigo,
+    magenta,
+    teal,
+    lightblue,
+    yellow,
+    darkred
+  );
   animation-name: gradientMovement, bubbleBounceSix;
   animation-duration: 25s, 39s;
 }
@@ -194,6 +257,18 @@ body {
 .lava-lamp__ball--seven {
   top: 80%;
   left: 80%;
+  background: linear-gradient(
+    -30deg,
+    blue,
+    orange,
+    purple,
+    indigo,
+    magenta,
+    teal,
+    lightblue,
+    yellow,
+    darkred
+  );
   animation-name: gradientMovement, bubbleBounceSeven;
   animation-duration: 25s, 36s;
 }

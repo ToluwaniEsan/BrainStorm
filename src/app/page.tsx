@@ -54,7 +54,8 @@ async function Home() {
 
   if (!session) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8">
+      <body>
+        <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8">
         <h1 className="text-4xl font-semibold">Clutter</h1>
         <p>Your creative helper</p>
         <a className="rounded-md bg-foreground px-5 py-3 text-background" href="/auth/login">
@@ -63,7 +64,9 @@ async function Home() {
         <p className="max-w-md text-center text-sm text-zinc-500">
           Sign in to continue.
         </p>
-      </main>
+        </main>
+      </body>
+
     );
   }
 

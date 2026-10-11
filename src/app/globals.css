@@ -1,21 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #ffcfac;
   --foreground: #171717;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-  }
 }
 
 @keyframes gradientMovement {
@@ -30,39 +21,44 @@
   }
 }
 
+body {
+  position: relative;
+  isolation: isolate;
+  background-color: #ffcfac;
+}
+
+body::before {
+  position: fixed;
+  z-index: -1;
+  inset: -15%;
+  content: "";
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 15% 25%, rgb(0 0 255 / 75%) 0%, transparent 38%),
+    radial-gradient(ellipse at 78% 18%, rgb(255 165 0 / 75%) 0%, transparent 36%),
+    radial-gradient(ellipse at 55% 75%, rgb(128 0 128 / 75%) 0%, transparent 40%),
+    radial-gradient(ellipse at 88% 70%, rgb(75 0 130 / 70%) 0%, transparent 36%),
+    radial-gradient(ellipse at 30% 80%, rgb(255 0 255 / 65%) 0%, transparent 34%),
+    radial-gradient(ellipse at 65% 35%, rgb(0 128 128 / 70%) 0%, transparent 34%),
+    radial-gradient(ellipse at 10% 60%, rgb(173 216 230 / 80%) 0%, transparent 38%),
+    radial-gradient(ellipse at 42% 15%, rgb(255 255 0 / 65%) 0%, transparent 32%),
+    radial-gradient(ellipse at 92% 45%, rgb(139 0 0 / 65%) 0%, transparent 34%);
+  background-size: 160% 160%;
+  filter: blur(48px);
+  opacity: 0.58;
+  animation: gradientMovement 25s ease-in infinite;
+}
+
 main {
   position: relative;
   isolation: isolate;
+  background-color: transparent;
   color: rgb(191, 18, 18);
   font-family: Arial, Helvetica, sans-serif;
 }
 
-main::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  content: "";
-  pointer-events: none;
-  background: linear-gradient(
-    -45deg,
-    blue,
-    orange,
-    purple,
-    indigo,
-    magenta,
-    teal,
-    lightblue,
-    yellow,
-    darkred
-  );
-  background-size: 400% 400%;
-  filter: blur(32px);
-  opacity: 0.6;
-  animation: gradientMovement 25s ease-in infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  main::before {
+  body::before {
     animation: none;
     background-position: 50% 50%;
   }

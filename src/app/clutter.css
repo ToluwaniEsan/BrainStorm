@@ -88,21 +88,25 @@ body { background-color: var(--c-peach); }
   background: radial-gradient(circle, var(--blob) 0%, transparent 62%);
   opacity: 0.75;
   will-change: transform;
-  animation: c-drift-a 34s ease-in-out infinite alternate;
+  /* A slow, small float: enough to see the colour breathe, never enough to
+     pull the eye off the page. Each blob has its own path and pace. */
+  animation: c-drift-a 18s ease-in-out infinite;
 }
 .c-aurora__blob--one { --blob: var(--c-ps); top: -30vmax; left: -24vmax; }
-.c-aurora__blob--two { --blob: var(--c-id); top: -30vmax; right: -26vmax; animation-name: c-drift-b; animation-duration: 41s; }
-.c-aurora__blob--three { --blob: var(--c-ae); bottom: -32vmax; left: -14vmax; animation-name: c-drift-b; animation-duration: 37s; animation-direction: alternate-reverse; }
-.c-aurora__blob--four { --blob: var(--c-ai); bottom: -30vmax; right: -20vmax; animation-duration: 45s; animation-direction: alternate-reverse; }
+.c-aurora__blob--two { --blob: var(--c-id); top: -30vmax; right: -26vmax; animation-name: c-drift-b; animation-duration: 21s; animation-delay: -6s; }
+.c-aurora__blob--three { --blob: var(--c-ae); bottom: -32vmax; left: -14vmax; animation-name: c-drift-b; animation-duration: 19s; animation-direction: reverse; animation-delay: -11s; }
+.c-aurora__blob--four { --blob: var(--c-ai); bottom: -30vmax; right: -20vmax; animation-duration: 23s; animation-direction: reverse; animation-delay: -4s; }
 @keyframes c-drift-a {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(9vmax, 6vmax, 0) scale(1.08); }
-  100% { transform: translate3d(3vmax, 12vmax, 0) scale(0.96); }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  25% { transform: translate3d(4vmax, 2.5vmax, 0) scale(1.04); }
+  50% { transform: translate3d(1.5vmax, 5vmax, 0) scale(0.98); }
+  75% { transform: translate3d(-3vmax, 2vmax, 0) scale(1.02); }
 }
 @keyframes c-drift-b {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(-8vmax, 7vmax, 0) scale(0.94); }
-  100% { transform: translate3d(-12vmax, 2vmax, 0) scale(1.06); }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  25% { transform: translate3d(-3.5vmax, 3vmax, 0) scale(0.97); }
+  50% { transform: translate3d(-5vmax, -1vmax, 0) scale(1.04); }
+  75% { transform: translate3d(-1.5vmax, -3.5vmax, 0) scale(1); }
 }
 /* While a session runs, the colour gathers gently toward the wave and
    swells a little with the voice (--c-level, 0..1, set by the Home page). */

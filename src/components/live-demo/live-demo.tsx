@@ -160,15 +160,23 @@ export function LiveDemo() {
       }
       if (sc.interrupted) {
         player.current?.clear();
+        // The held or muted reply is abandoned; whatever Live says next is judged afresh.
+        if (gate.current === "holding" && holdTimer.current) clearTimeout(holdTimer.current);
         if (gate.current === "holding") held.current = { audio: [], text: "", done: false };
-        if (gate.current === "muted") gate.current = "idle";
+        if (gate.current === "holding" || gate.current === "muted") gate.current = "idle";
       }
       if (sc.turnComplete) {
         turn.current = {};
         // An invite only counts for the turn it was said in.
         userTail.current = "";
-        if (gate.current === "holding") held.current.done = true;
-        else if (invitedNext.current && !spokeSinceUser.current && !nudged.current) {
+        if (gate.current === "holding") {
+          held.current.done = true;
+          // They asked while this reply was held: it is the answer, so play it now.
+          if (invitedNext.current) {
+            release();
+            invitedNext.current = false;
+          }
+        } else if (invitedNext.current && !spokeSinceUser.current && !nudged.current) {
           // They asked, but Live chose to stay silent: ask it once to answer.
           nudge();
         } else {

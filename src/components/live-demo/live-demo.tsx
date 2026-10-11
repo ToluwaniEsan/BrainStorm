@@ -160,19 +160,28 @@ export function LiveDemo() {
       }
       if (sc.interrupted) {
         player.current?.clear();
+        // The held or muted reply is abandoned; whatever Live says next is judged afresh.
+        if (gate.current === "holding" && holdTimer.current) clearTimeout(holdTimer.current);
         if (gate.current === "holding") held.current = { audio: [], text: "", done: false };
-        if (gate.current === "muted") gate.current = "idle";
+        if (gate.current === "holding" || gate.current === "muted") gate.current = "idle";
       }
       if (sc.turnComplete) {
         turn.current = {};
-        if (gate.current === "holding") held.current.done = true;
-        else if (invitedNext.current && !spokeSinceUser.current && !nudged.current) {
+        // An invite only counts for the turn it was said in.
+        userTail.current = "";
+        if (gate.current === "holding") {
+          held.current.done = true;
+          // They asked while this reply was held: it is the answer, so play it now.
+          if (invitedNext.current) {
+            release();
+            invitedNext.current = false;
+          }
+        } else if (invitedNext.current && !spokeSinceUser.current && !nudged.current) {
           // They asked, but Live chose to stay silent: ask it once to answer.
           nudge();
         } else {
           gate.current = "idle";
           invitedNext.current = false;
-          if (spokeSinceUser.current) userTail.current = "";
         }
         void sortPending();
       }
@@ -260,7 +269,7 @@ export function LiveDemo() {
     if (wantsReply) {
       if (gate.current === "holding") release();
       else if (!spokeSinceUser.current || gate.current === "muted") nudge();
-      else invitedNext.current = true;
+      // Otherwise Clutter already answered (its reply was heard); nothing more to allow.
     } else if (gate.current === "holding") {
       // Words not yet checked may still hold the request; check them first.
       if (pending.current.trim() && Date.now() >= sortRetryAt.current) void sortPending();

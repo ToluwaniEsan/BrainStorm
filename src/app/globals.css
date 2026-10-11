@@ -126,7 +126,9 @@ background-color: #ffcfac;
 .lava-lamp {
 position: fixed;
 z-index: 0;
-inset: 0;
+inset: 0 0 auto;
+height: 100vh;
+height: 100dvh;
 overflow: hidden;
 pointer-events: none;
 }
@@ -203,6 +205,18 @@ top: 80%;
 left: 80%;
 animation-name: gradientMovement, bubbleBounceSeven;
 animation-duration: 25s, 36s;
+}
+
+@media (max-width: 760px) {
+.lava-lamp__ball {
+width: clamp(7rem, 24vw, 15rem);
+}
+}
+
+@media (max-height: 560px) {
+.lava-lamp__ball {
+width: clamp(7rem, 24vh, 13rem);
+}
 }
 
 /* Her page text rule stays off: it turned all page text red Arial, and the

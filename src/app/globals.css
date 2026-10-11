@@ -11,13 +11,13 @@
 
 @keyframes gradientMovement {
   0% {
-    background-position: 0% 0%;
+    background-position: 50% 50%;
   }
   50% {
     background-position: 100% 100%;
   }
   100% {
-    background-position: 0% 0%;
+    background-position: 50% 50%;
   }
 }
 
@@ -138,7 +138,7 @@ body {
   height: 100%;
   border-radius: 50%;
   background-image: var(--ball-gradient);
-  background-position: 0% 0%;
+  background-position: 50% 50%;
   background-size: 250% 250%;
   filter: blur(10px);
   opacity: 0.65;
@@ -164,10 +164,7 @@ body {
     darkred
   );
   animation-duration: 18s;
-  animation-delay: -2s;
 }
-
-/*
 
 .lava-lamp__float--two {
   top: 5%;
@@ -189,7 +186,6 @@ body {
     teal
   );
   animation-duration: 21s;
-  animation-delay: -7s;
 }
 
 .lava-lamp__float--three {
@@ -212,7 +208,6 @@ body {
     darkred
   );
   animation-duration: 24s;
-  animation-delay: -11s;
 }
 
 .lava-lamp__float--four {
@@ -235,7 +230,6 @@ body {
     darkred
   );
   animation-duration: 20s;
-  animation-delay: -5s;
 }
 
 .lava-lamp__float--five {
@@ -258,7 +252,6 @@ body {
     darkred
   );
   animation-duration: 23s;
-  animation-delay: -14s;
 }
 
 .lava-lamp__float--six {
@@ -281,7 +274,6 @@ body {
     darkred
   );
   animation-duration: 19s;
-  animation-delay: -9s;
 }
 
 .lava-lamp__float--seven {
@@ -304,10 +296,7 @@ body {
     darkred
   );
   animation-duration: 26s;
-  animation-delay: -17s;
 }
-
-*/
 
 main {
   position: relative;

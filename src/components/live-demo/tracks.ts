@@ -25,11 +25,11 @@ export const trackTools: Tool[] = [
       type: "object",
       properties: {
         title: { type: "string", description: "2-5 words, in the user's own wording." },
-        first_thought: { type: "string", description: "The thought that started it, quoted or tightly paraphrased." },
+        first_thought: { type: "string", description: "The point that started it, as a short summary (a few words to one line)." },
         more_thoughts: {
           type: "array",
           items: { type: "string" },
-          description: "Any further thoughts from the NEW words that belong in this new track.",
+          description: "Any further points from the NEW words that belong in this new track, each a short summary.",
         },
         reason,
       },
@@ -44,7 +44,7 @@ export const trackTools: Tool[] = [
       type: "object",
       properties: {
         track_id: { type: "string" },
-        thought: { type: "string", description: "Quote or tight paraphrase of what the user said. Never your own idea." },
+        thought: { type: "string", description: "Short summary of the point they made (a few words to one line). Never your own idea." },
         reason,
       },
       required: ["track_id", "thought", "reason"],
@@ -97,11 +97,15 @@ export const trackPrompt = `You sort a person's think-out-loud speech into track
 You get the current tracks, what they said just before, and the NEW words. File only the NEW words, using the tools.
 
 Rules:
-- Never invent ideas, suggestions, features or inspiration. Only file the user's own words (quote or tight paraphrase).
+- File the point, not the transcript. Each thought is a short summary of what they meant (a few words to one line, like a
+  note someone would jot down), keeping their key terms and names. Drop filler, repetition, hedging and side remarks, and
+  boil several sentences about the same point down to one thought.
+- Never invent ideas, suggestions, features or inspiration. Summarise only what they said; add nothing of your own.
 - New topic: create_track (put every NEW thought for it in first_thought / more_thoughts). Same topic: add_to_track.
 - Prefer an existing track over a near-duplicate. If they return to an earlier topic, switch_track, then add_to_track.
 - Use move_thought / edit_thought when they correct themselves; merge_tracks only when they say two topics are the same.
-- Split long speech into separate thoughts, one idea each. Skip filler ("um", "so yeah", "testing") and
+- One idea per thought. If they repeat or rephrase a point already on a track, don't add it again (use edit_thought if
+  they sharpened it). Skip filler ("um", "so yeah", "testing") and
   questions aimed at the assistant ("what do you think?").
 - Every call needs a short "reason" quoting the cue in their speech.
 - If the NEW words hold no real thought, make no calls.

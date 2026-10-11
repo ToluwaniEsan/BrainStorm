@@ -54,15 +54,7 @@ async function Home() {
 
   if (!session) {
     return (
-      <body>
-        <div className= "lava-lamp">
-          <div className="ball b1"></div>
-          <div className="ball b2"></div>
-          <div className="ball b3"></div>
-          <div className="ball b4"></div>
-          <div className="ball b5"></div>
-        </div>
-        <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-8">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
         <h1 className="text-4xl font-semibold">Clutter</h1>
         <p>Your creative helper</p>
         <a className="rounded-md bg-foreground px-5 py-3 text-background" href="/auth/login">
@@ -71,9 +63,7 @@ async function Home() {
         <p className="max-w-md text-center text-sm">
           Sign in to continue.
         </p>
-        </main>
-      </body>
-
+      </main>
     );
   }
 
@@ -81,7 +71,7 @@ async function Home() {
   const db = await supabaseCheck(sub, email, name, session.user.email_verified);
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-8 bg-background p-6 sm:p-10">
+    <main className="flex min-h-screen flex-col items-center gap-8 p-6 sm:p-10">
       <Nav current="/" />
       <div className="w-full max-w-6xl">
         <h1 className="text-2xl font-semibold">Welcome to Clutter</h1>

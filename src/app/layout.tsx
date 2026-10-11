@@ -23,7 +23,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <div className="lava-lamp" aria-hidden="true">
+          <span className="lava-lamp__ball lava-lamp__ball--one" />
+          <span className="lava-lamp__ball lava-lamp__ball--two" />
+          <span className="lava-lamp__ball lava-lamp__ball--three" />
+          <span className="lava-lamp__ball lava-lamp__ball--four" />
+          <span className="lava-lamp__ball lava-lamp__ball--five" />
+        </div>
+        {children}
+      </body>
     </html>
   );
 }

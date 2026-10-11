@@ -4,11 +4,10 @@ import "./globals.css";
 import { profile } from "@/db/schema";
 import { auth0 } from "@/lib/auth0";
 import { LiveDemo } from "@/components/live-demo/live-demo";
-import { Nav } from "@/components/nav";
 import { EmailInUseError, provisionUser, withUser, type Identity } from "@/lib/db";
 
-// Test page. Signed out: a Log in button that goes to Auth0. Signed in: the
-// Gemini Live demo, with a details panel showing what happened in Supabase.
+// Home. Signed out: a Log in button that goes to Auth0. Signed in: the voice
+// mode (LiveDemo).
 // Plain arguments so React's per-request cache can match repeat calls.
 const supabaseCheck = cache(async (sub: string, email?: string, name?: string, emailVerified?: boolean) => {
   const who: Identity = { email, name, emailVerified };
@@ -40,63 +39,35 @@ function message(err: unknown) {
   return err instanceof Error ? err.message : "Unknown error";
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
-      <dt className="w-40 shrink-0 text-zinc-500">{label}</dt>
-      <dd className="break-all font-mono text-sm">{value}</dd>
-    </div>
-  );
-}
-
 async function Home() {
   const session = await auth0.getSession();
 
   if (!session) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-        <h1 className="text-4xl font-semibold">Clutter</h1>
-        <p>Your creative helper</p>
-        <a className="rounded-md bg-foreground px-5 py-3 text-background" href="/auth/login">
-          Log in
-        </a>
-        <p className="max-w-md text-center text-sm">
-          Sign in to continue.
-        </p>
+      <main className="c-shell">
+        <div className="c-landing">
+          <h1>CLUTTER</h1>
+          <p className="c-muted">Think out loud. Clutter sorts what you say into tracks.</p>
+          <a className="c-btn" href="/auth/login">
+            Log in
+          </a>
+        </div>
       </main>
     );
   }
 
   const { sub, name, email } = session.user;
+  // Makes sure the user's own space exists in Supabase before they talk.
   const db = await supabaseCheck(sub, email, name, session.user.email_verified);
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-8 p-6 sm:p-10">
-      <Nav current="/" />
-      <div className="w-full max-w-6xl">
-        <h1 className="text-2xl font-semibold">Welcome to Clutter</h1>
-        <p className="text-sm text-zinc-500">Signed in as {name ?? email ?? sub}</p>
-      </div>
+    <main className="c-shell">
+      {!db.ok && (
+        <p className="c-status error" style={{ position: "fixed", top: 84, left: 16, right: 16, zIndex: 30, textAlign: "center" }}>
+          Couldn&apos;t set up your account: {db.error}
+        </p>
+      )}
       <LiveDemo />
-      <details className="w-full max-w-6xl text-sm">
-        <summary className="cursor-pointer text-zinc-500">
-          Account check: {db.ok ? "saved in Supabase" : "Supabase problem"}
-        </summary>
-        <dl className="mt-3 flex flex-col gap-3 rounded-lg border border-zinc-300 p-5 dark:border-zinc-700">
-          <Row label="Auth0 user" value={name ?? email ?? "(no name)"} />
-          <Row label="Auth0 id (sub)" value={sub} />
-          <Row label="Email" value={email ?? "(none from this login method)"} />
-          {db.ok ? (
-            <>
-              <Row label="Supabase" value="Saved. Your id, email and name are in app.users." />
-              <Row label="Your schema" value={db.schema} />
-              <Row label="Profile row" value={db.profile} />
-            </>
-          ) : (
-            <Row label="Supabase" value={`Failed: ${db.error}`} />
-          )}
-        </dl>
-      </details>
     </main>
   );
 }
@@ -105,8 +76,10 @@ export default function Page() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-background p-8 text-foreground">
-          Loading 🤔...
+        <main className="c-shell">
+          <div className="c-landing">
+            <p className="c-muted">Loading...</p>
+          </div>
         </main>
       }
     >

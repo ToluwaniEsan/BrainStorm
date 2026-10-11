@@ -26,24 +26,24 @@ export function DeleteAccount() {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="self-start text-sm text-red-600 underline">
+      <button onClick={() => setOpen(true)} className="c-btn danger">
         Delete my account and data
       </button>
     );
   }
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-red-400 bg-red-50 p-4 text-sm text-zinc-900">
-      <p className="font-semibold">This permanently deletes your profile, links, documents, tracks and everything Clutter learned.</p>
-      <label className="flex flex-col gap-1">
-        Type DELETE to confirm
-        <input className="rounded-md border border-red-300 px-3 py-2" value={typed} onChange={(e) => setTyped(e.target.value)} />
+    <div className="c-alert danger">
+      <b>This permanently deletes your profile, links, documents, sessions, tracks and everything Clutter learned.</b>
+      <label className="c-field" style={{ marginTop: 10 }}>
+        <span>Type DELETE to confirm</span>
+        <input className="c-input" value={typed} onChange={(e) => setTyped(e.target.value)} />
       </label>
-      {error && <p className="text-red-700">{error}</p>}
-      <div className="flex gap-2">
-        <button disabled={typed !== "DELETE" || busy} onClick={() => void remove()} className="rounded-md bg-red-600 px-3 py-1.5 text-white disabled:opacity-50">
+      {error && <p className="c-status error">{error}</p>}
+      <div className="c-row">
+        <button disabled={typed !== "DELETE" || busy} onClick={() => void remove()} className="c-btn danger">
           {busy ? "Deleting..." : "Delete everything"}
         </button>
-        <button onClick={() => setOpen(false)} className="rounded-md border border-zinc-400 px-3 py-1.5">Cancel</button>
+        <button onClick={() => setOpen(false)} className="c-btn ghost">Cancel</button>
       </div>
     </div>
   );

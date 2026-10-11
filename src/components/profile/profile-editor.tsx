@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { AdobeExpressButton } from "./adobe-express";
 import { LearningToggle } from "./learning-toggle";
 import { Loading } from "@/components/loading";
 
@@ -336,6 +337,7 @@ export function ProfileEditor({ authName, email }: { authName: string; email: st
               }}
             />
           </label>
+          <AdobeExpressButton disabled={busy === "upload"} onDesign={(f) => void upload(f)} onError={report} />
         </section>
 
         <section className="c-panel">

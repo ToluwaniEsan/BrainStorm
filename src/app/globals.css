@@ -145,7 +145,7 @@ body {
   left: 2%;
 
   background: linear-gradient(
-    -30deg,
+    -45deg,
     blue,
     orange,
     purple,
@@ -165,16 +165,16 @@ body {
   animation-duration: 25s, 38s;
 
   background: linear-gradient(
-    -45deg,
+    -45deg,    
+    darkred,
     blue,
-    orange,
-    purple,
-    indigo,
+    orange,  
     magenta,
-    teal,
-    lightblue,
+    purple, 
     yellow,
-    darkred
+    indigo,
+    teal,
+    lightblue
   );
 }
 
@@ -182,7 +182,7 @@ body {
   top: 43%;
   left: 24%;
   background: linear-gradient(
-    -25deg,
+    -45deg,
     blue,
     orange,
     purple,
@@ -201,7 +201,7 @@ body {
   top: 58%;
   left: 72%;
   background: linear-gradient(
-    -40deg,
+    -45deg,
     blue,
     orange,
     purple,
@@ -220,7 +220,7 @@ body {
   top: 72%;
   left: 6%;
   background: linear-gradient(
-    -20deg,
+    -45deg,
     blue,
     orange,
     purple,
@@ -258,7 +258,7 @@ body {
   top: 80%;
   left: 80%;
   background: linear-gradient(
-    -30deg,
+    -45deg,
     blue,
     orange,
     purple,

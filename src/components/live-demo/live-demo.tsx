@@ -43,6 +43,8 @@ export function LiveDemo() {
   const level = useRef(0);
   const [typed, setTyped] = useState("");
   const [details, setDetails] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const mutedRef = useRef(false);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
 
   const boardRef = useRef<Board>(emptyBoard);
@@ -406,7 +408,9 @@ export function LiveDemo() {
       }
       session.current = sess;
       addLog("info", "Connected to Clutter. Start talking.");
-      const m = await startMic((data) => session.current?.sendAudio(data));
+      const m = await startMic((data) => {
+        if (!mutedRef.current) session.current?.sendAudio(data); // muted: keep the session, drop the audio
+      });
       if (!wanted.current) {
         m.stop();
         return;
@@ -424,6 +428,8 @@ export function LiveDemo() {
     wanted.current = false;
     mic.current?.stop();
     mic.current = null;
+    mutedRef.current = false;
+    setMuted(false);
     const s = session.current;
     session.current = null;
     s?.close();
@@ -561,7 +567,7 @@ export function LiveDemo() {
     if (status !== "listening") return;
     let raf = 0;
     const tick = () => {
-      level.current = mic.current?.level() ?? 0;
+      level.current = mutedRef.current ? 0 : (mic.current?.level() ?? 0);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -619,6 +625,18 @@ export function LiveDemo() {
                   <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Or type a thought" aria-label="Type a thought" />
                   <button className="c-pill-btn">Send</button>
                 </form>
+              )}
+              {listening && (
+                <button
+                  className="c-pill-btn"
+                  aria-pressed={muted}
+                  onClick={() => {
+                    mutedRef.current = !muted;
+                    setMuted(!muted);
+                  }}
+                >
+                  {muted ? "Unmute mic" : "Mute mic"}
+                </button>
               )}
               <button className="c-pill-btn" onClick={stop}>
                 End session

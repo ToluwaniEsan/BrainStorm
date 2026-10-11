@@ -44,7 +44,7 @@ export const POST = api(async (req: Request) => {
 
   let extracted: string | null = null;
   try {
-    extracted = await extractText(data, mimeType);
+    extracted = await extractText(data, mimeType, filename);
   } catch (err) {
     console.error("Text extraction failed", err);
   }

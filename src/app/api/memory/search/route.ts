@@ -3,7 +3,7 @@ import { HttpError, api } from "@/lib/http";
 import { requireUser } from "@/lib/session";
 import { searchMemory } from "@/server/memory";
 
-// Semantic search over this user's own memory only (?q=...&limit=8).
+// Word search over this user's own memory only (?q=...&limit=8).
 export const GET = api(async (req: Request) => {
   const user = await requireUser();
   const params = new URL(req.url).searchParams;

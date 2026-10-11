@@ -1,7 +1,5 @@
-import { Type, type FunctionDeclaration } from "@google/genai";
-
 // Tracks the model builds while the user talks. Nothing here is saved yet:
-// this is a test of how Gemini Live splits speech into tracks.
+// this is a test of how Grok splits speech into tracks.
 
 export type Item = { id: string; text: string };
 export type Track = { id: string; title: string; items: Item[] };
@@ -9,24 +7,28 @@ export type Board = { tracks: Track[]; active?: string; next: number };
 
 export const emptyBoard: Board = { tracks: [], next: 1 };
 
+// Function tools in the xAI Responses API shape (plain JSON Schema).
+type Tool = { type: "function"; name: string; description: string; parameters: Record<string, unknown> };
+
 const reason = {
-  type: Type.STRING,
+  type: "string",
   description: "One short sentence: what in the user's words made you do this.",
 };
 
-export const trackTools: FunctionDeclaration[] = [
+export const trackTools: Tool[] = [
   {
+    type: "function",
     name: "create_track",
     description:
       "Start a new track when the user begins talking about a topic no existing track covers. Title comes from the user's own words.",
     parameters: {
-      type: Type.OBJECT,
+      type: "object",
       properties: {
-        title: { type: Type.STRING, description: "2-5 words, in the user's own wording." },
-        first_thought: { type: Type.STRING, description: "The thought that started it, quoted or tightly paraphrased." },
+        title: { type: "string", description: "2-5 words, in the user's own wording." },
+        first_thought: { type: "string", description: "The thought that started it, quoted or tightly paraphrased." },
         more_thoughts: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
+          type: "array",
+          items: { type: "string" },
           description: "Any further thoughts from the NEW words that belong in this new track.",
         },
         reason,
@@ -35,51 +37,56 @@ export const trackTools: FunctionDeclaration[] = [
     },
   },
   {
+    type: "function",
     name: "add_to_track",
     description: "Add one thought the user just said to an existing track.",
     parameters: {
-      type: Type.OBJECT,
+      type: "object",
       properties: {
-        track_id: { type: Type.STRING },
-        thought: { type: Type.STRING, description: "Quote or tight paraphrase of what the user said. Never your own idea." },
+        track_id: { type: "string" },
+        thought: { type: "string", description: "Quote or tight paraphrase of what the user said. Never your own idea." },
         reason,
       },
       required: ["track_id", "thought", "reason"],
     },
   },
   {
+    type: "function",
     name: "switch_track",
     description: "The user went back to an earlier topic (e.g. 'going back to auth...'). Makes that track active.",
     parameters: {
-      type: Type.OBJECT,
-      properties: { track_id: { type: Type.STRING }, reason },
+      type: "object",
+      properties: { track_id: { type: "string" }, reason },
       required: ["track_id", "reason"],
     },
   },
   {
+    type: "function",
     name: "move_thought",
     description: "A thought was filed under the wrong track; move it.",
     parameters: {
-      type: Type.OBJECT,
-      properties: { item_id: { type: Type.STRING }, to_track_id: { type: Type.STRING }, reason },
+      type: "object",
+      properties: { item_id: { type: "string" }, to_track_id: { type: "string" }, reason },
       required: ["item_id", "to_track_id", "reason"],
     },
   },
   {
+    type: "function",
     name: "edit_thought",
     description: "The user corrected or refined something they said earlier; update that thought.",
     parameters: {
-      type: Type.OBJECT,
-      properties: { item_id: { type: Type.STRING }, text: { type: Type.STRING }, reason },
+      type: "object",
+      properties: { item_id: { type: "string" }, text: { type: "string" }, reason },
       required: ["item_id", "text", "reason"],
     },
   },
   {
+    type: "function",
     name: "merge_tracks",
     description: "Only when the user says two tracks are really the same thing. Moves every thought into one track.",
     parameters: {
-      type: Type.OBJECT,
-      properties: { from_track_id: { type: Type.STRING }, into_track_id: { type: Type.STRING }, reason },
+      type: "object",
+      properties: { from_track_id: { type: "string" }, into_track_id: { type: "string" }, reason },
       required: ["from_track_id", "into_track_id", "reason"],
     },
   },
@@ -102,18 +109,19 @@ Rules:
   "do you feel me?", "right?", "does that make sense?", "be honest", a question aimed at you). Not for rhetorical
   questions they're asking themselves while thinking.`;
 
-// Not a track change: tells the page the user wants Gemini to answer.
-export const replyTool: FunctionDeclaration = {
+// Not a track change: tells the page the user wants Clutter to answer.
+export const replyTool: Tool = {
+  type: "function",
   name: "reply_to_user",
   description: "The user just turned to the assistant for a response or opinion.",
-  parameters: { type: Type.OBJECT, properties: { reason }, required: ["reason"] },
+  parameters: { type: "object", properties: { reason }, required: ["reason"] },
 };
 
 type Args = Record<string, unknown>;
 const str = (a: Args, k: string) => (typeof a[k] === "string" ? (a[k] as string).trim() : "");
 
 // Applies one tool call. Returns the new board plus the response sent back
-// to Gemini (always includes the current track list so it knows the ids).
+// to the model (always includes the current track list so it knows the ids).
 export function applyTool(board: Board, name: string, args: Args): { board: Board; result: Record<string, unknown> } {
   let b: Board = { ...board, tracks: board.tracks.map((t) => ({ ...t, items: [...t.items] })) };
   const track = (id: string) => b.tracks.find((t) => t.id === id);

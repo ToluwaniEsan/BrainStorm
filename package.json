@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check:gemini": "node --env-file-if-exists=.env.local scripts/check-gemini.mjs",
+    "check:xai": "node --env-file-if-exists=.env.local scripts/check-xai.mjs",
     "check:db": "node --env-file-if-exists=.env.local scripts/check-db.mjs",
     "check:storage": "node --env-file-if-exists=.env.local scripts/check-storage.mjs",
     "check:exa": "node --env-file-if-exists=.env.local scripts/check-exa.mjs",
@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.31.1",
-    "@google/genai": "^2.28.0",
     "dotenv": "^18.0.7",
     "drizzle-orm": "^0.45.4",
     "mammoth": "^1.11.0",
@@ -39,10 +38,8 @@
     "typescript": "^5"
   },
   "allowScripts": {
-    "@google/genai@2.28.0": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
-    "protobufjs@7.6.6": true,
     "unrs-resolver@1.12.2": true
   }
 }

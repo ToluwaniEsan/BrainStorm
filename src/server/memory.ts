@@ -1,8 +1,7 @@
 import "server-only";
-import { and, cosineDistance, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { memoryChunks } from "@/db/schema";
 import { withUser, type Tx } from "@/lib/db";
-import { chunkText, embed } from "@/lib/embeddings";
 
 export type MemorySource = { sourceType: string; sourceTable: string; sourceId: string };
 
@@ -17,12 +16,31 @@ export function clearMemory(tx: Tx, src: Pick<MemorySource, "sourceTable" | "sou
     .where(and(eq(memoryChunks.sourceTable, src.sourceTable), eq(memoryChunks.sourceId, src.sourceId)));
 }
 
-// Replaces the memory chunks for one source row with fresh embeddings. Call it
-// after the row's own transaction commits: Gemini runs with no database
-// connection held, and the chunks are written in a transaction of their own.
+// Splits text into roughly paragraph-sized chunks for search.
+export function chunkText(text: string, max = 1500): string[] {
+  const parts = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const chunks: string[] = [];
+  let cur = "";
+  for (const p of parts) {
+    for (let i = 0; i < p.length; i += max) {
+      const piece = p.slice(i, i + max);
+      if (cur && cur.length + piece.length + 2 > max) {
+        chunks.push(cur);
+        cur = "";
+      }
+      cur = cur ? `${cur}\n\n${piece}` : piece;
+    }
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
+// Replaces the memory chunks for one source row. Call it after the row's own
+// transaction commits; the chunks are written in a transaction of their own.
+// xAI has no embeddings API, so chunks are found by Postgres full-text search
+// and the embedding column stays empty.
 export async function indexText(sub: string, src: MemorySource, text: string) {
   const chunks = chunkText(text);
-  const vectors = await embed(chunks, "document");
   return withUser(sub, async (tx) => {
     await clearMemory(tx, src);
     if (chunks.length === 0) return 0;
@@ -30,14 +48,19 @@ export async function indexText(sub: string, src: MemorySource, text: string) {
       const rows = await tx.execute(sql`select 1 from ${sql.identifier(src.sourceTable)} where id = ${src.sourceId}`);
       if (rows.length === 0) return 0;
     }
-    await tx.insert(memoryChunks).values(chunks.map((body, i) => ({ ...src, body, embedding: vectors[i] })));
+    await tx.insert(memoryChunks).values(chunks.map((body) => ({ ...src, body })));
     return chunks.length;
   });
 }
 
+// Full-text search: a chunk matches if it shares any meaningful word with the
+// query (stemmed, so "projects" finds "project"), best matches first.
 export async function searchMemory(tx: Tx, query: string, limit = 8) {
-  const [q] = await embed([query], "query");
-  const distance = cosineDistance(memoryChunks.embedding, q);
+  const words = [...new Set(query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? [])].slice(0, 30);
+  if (words.length === 0) return [];
+  const q = sql`to_tsquery('english', ${words.join(" | ")})`;
+  const doc = sql`to_tsvector('english', ${memoryChunks.body})`;
+  const rank = sql<number>`ts_rank(${doc}, ${q})`;
   return tx
     .select({
       id: memoryChunks.id,
@@ -45,10 +68,11 @@ export async function searchMemory(tx: Tx, query: string, limit = 8) {
       sourceType: memoryChunks.sourceType,
       sourceTable: memoryChunks.sourceTable,
       sourceId: memoryChunks.sourceId,
-      distance,
+      rank,
     })
     .from(memoryChunks)
-    .orderBy(distance)
+    .where(sql`${doc} @@ ${q}`)
+    .orderBy(desc(rank))
     .limit(limit);
 }
 

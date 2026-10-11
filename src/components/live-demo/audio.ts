@@ -1,5 +1,5 @@
-// Browser audio helpers for the Gemini Live demo.
-// Gemini Live takes 16 kHz mono 16-bit PCM in and sends 24 kHz PCM back.
+// Browser audio helpers for the realtime voice mode.
+// Grok voice takes 16 kHz mono 16-bit PCM in and sends 24 kHz PCM back.
 
 // Runs on the audio thread: downsamples the mic to 16 kHz and posts
 // 50 ms chunks of Int16 PCM back to the page.
@@ -82,7 +82,7 @@ export async function startMic(onChunk: (b64: string) => void): Promise<Mic> {
   };
 }
 
-// Plays Gemini's 24 kHz PCM replies back to back; clear() stops at once
+// Plays Clutter's 24 kHz PCM replies back to back; clear() stops at once
 // (used when the user talks over the model).
 export class Player {
   private ctx = new AudioContext({ sampleRate: 24000 });

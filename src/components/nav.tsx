@@ -1,33 +1,51 @@
-import Link from "next/link";
+"use client";
 
-// Top menu shared by the signed-in pages. Styling is left plain on purpose:
-// the visual design (globals.css) belongs to the design work.
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useLayoutEffect, useRef, useState } from "react";
+
+// The floating bar at the top of every page. It lives in the root layout, so
+// it stays put while pages change underneath it; the pill slides to the
+// current page.
 const items = [
   { href: "/", label: "Home" },
+  { href: "/studio", label: "Studio" },
   { href: "/profile", label: "Profile" },
   { href: "/settings", label: "Settings" },
-];
+] as const;
 
-export function Nav({ current }: { current: "/" | "/profile" | "/settings" }) {
+export function Nav() {
+  const path = usePathname();
+  const current = items.find((i) => (i.href === "/" ? path === "/" : path.startsWith(i.href)))?.href;
+  const refs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const place = () => {
+      const el = current ? refs.current[current] : null;
+      setPill(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+    };
+    place();
+    window.addEventListener("resize", place);
+    void document.fonts?.ready.then(place);
+    return () => window.removeEventListener("resize", place);
+  }, [current]);
+
   return (
-    <nav className="flex w-full max-w-6xl items-center justify-between gap-4">
-      <Link href="/" className="text-xl font-semibold">
-        Clutter
-      </Link>
-      <ul className="flex items-center gap-5 text-sm">
-        {items.map((i) => (
-          <li key={i.href}>
-            <Link href={i.href} aria-current={current === i.href ? "page" : undefined} className={current === i.href ? "font-semibold underline" : "hover:underline"}>
-              {i.label}
-            </Link>
-          </li>
-        ))}
-        <li>
-          <a href="/auth/logout" className="hover:underline">
-            Log out
-          </a>
-        </li>
-      </ul>
+    <nav className="c-bar" aria-label="Main">
+      <span className="c-bar-pill" aria-hidden="true" style={pill ? { left: pill.left, width: pill.width } : { opacity: 0 }} />
+      {items.map((i) => (
+        <Link
+          key={i.href}
+          href={i.href}
+          ref={(el) => {
+            refs.current[i.href] = el;
+          }}
+          aria-current={current === i.href ? "page" : undefined}
+        >
+          {i.label}
+        </Link>
+      ))}
     </nav>
   );
 }

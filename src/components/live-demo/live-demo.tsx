@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Player, startMic, type Mic } from "./audio";
 import { applyTool, emptyBoard, type Board } from "./tracks";
+import { Wave } from "./wave";
 
 type Status = "idle" | "connecting" | "listening" | "error";
 type LogEntry = { id: number; at: string; kind: "tool" | "thought" | "info" | "error"; title: string; detail?: string };
@@ -18,22 +19,31 @@ const INVITE =
 // While Gemini's reply waits for a verdict on whether the user asked for it.
 const HOLD_MS = 6000;
 
-// Demo of BrainStorm's Deep Thinking voice mode. The browser gets a one-time
-// token from /api/live/token and talks to Gemini Live directly for
-// transcription and voice, with instructions built from what BrainStorm knows
+// Track card colours, pastel takes on the Adobe app colours (see clutter.css).
+const TRACK_COLORS = ["--c-ps", "--c-ai", "--c-ae", "--c-id", "--c-dw", "--c-lr", "--c-xd", "--c-pr", "--c-ac"];
+
+// Clutter's Home: the voice mode. Tapping the mic pulls the background
+// bubbles into a wave that moves with your voice; once the first track
+// appears the wave rises and the tracks line up under it; stopping turns the
+// wave back into the mic at the top. Each stopped session is saved to Studio.
+//
+// How it works: the browser gets a one-time token from /api/live/token and
+// talks to Gemini Live directly for transcription and voice, with
+// instructions built from what Clutter knows
 // about the user (/api/live/context). Every couple of seconds the new
 // transcript goes to /api/live/tracks, where Gemini Flash sorts it into tracks
 // and says whether the user asked for a reply. Gemini's voice only plays when
 // they did. What the user said goes to /api/live/learn (if learning is on).
-// The tracks themselves aren't saved yet.
 export function LiveDemo() {
   const [status, setStatus] = useState<Status>("idle");
   const [board, setBoard] = useState<Board>(emptyBoard);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [interim, setInterim] = useState("");
-  const [level, setLevel] = useState(0);
+  const level = useRef(0);
   const [typed, setTyped] = useState("");
+  const [details, setDetails] = useState(false);
+  const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
 
   const boardRef = useRef<Board>(emptyBoard);
   const session = useRef<Session | null>(null);
@@ -58,6 +68,17 @@ export function LiveDemo() {
   const nudged = useRef(false); // nudged Live once since the user last spoke
   const userTail = useRef(""); // the user's latest words since Clutter last finished, for the invite check
   const unlearned = useRef(""); // what the user said that /api/live/learn hasn't seen
+  const linesRef = useRef<Line[]>([]);
+  linesRef.current = lines;
+  const studioId = useRef<string | undefined>(undefined); // this board's saved Studio session
+  const startedAt = useRef<string | undefined>(undefined);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flash = (text: string, error = false) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ text, error });
+    toastTimer.current = setTimeout(() => setToast(null), error ? 6000 : 3500);
+  };
 
   const addLog = (kind: LogEntry["kind"], title: string, detail?: string) =>
     setLog((l) => [{ id: ++seq.current, at: new Date().toLocaleTimeString(), kind, title, detail }, ...l].slice(0, 200));
@@ -350,6 +371,7 @@ export function LiveDemo() {
   async function start() {
     setStatus("connecting");
     wanted.current = true;
+    startedAt.current ??= new Date().toISOString();
     try {
       player.current = new Player();
       // Some Live models reject the "show thoughts" or "may stay silent"
@@ -401,13 +423,42 @@ export function LiveDemo() {
     s?.close();
     player.current?.close();
     player.current = null;
-    setLevel(0);
+    level.current = 0;
     setStatus((st) => (st === "error" ? st : "idle"));
-    void sortPending(); // file whatever was said last
+    void sortPending().then(save); // file whatever was said last, then save to Studio
     void learn();
     if (holdTimer.current) clearTimeout(holdTimer.current);
     gate.current = "idle";
     held.current = { audio: [], text: "", done: false };
+  }
+
+  // Saves the board and transcript to Studio, replacing this board's earlier
+  // save. Waits for a track sort that is still running so its tracks are in.
+  async function save() {
+    for (let i = 0; i < 75 && sorting.current; i++) await new Promise((r) => setTimeout(r, 200));
+    const b = boardRef.current;
+    const said = linesRef.current;
+    if (!b.tracks.length && !said.length) return;
+    try {
+      const res = await fetch("/api/studio", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: studioId.current,
+          startedAt: startedAt.current,
+          tracks: b.tracks.map((t) => ({ title: t.title, items: t.items.map((i) => i.text) })),
+          lines: said.map((l) => ({ who: l.who === "you" ? "you" : "clutter", text: l.text })),
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? `Saving failed (${res.status})`);
+      studioId.current = body.id;
+      const n = b.tracks.length;
+      flash(`Saved to Studio${n ? ` with ${n} track${n === 1 ? "" : "s"}` : ""}`);
+    } catch (err) {
+      addLog("error", "Saving to Studio failed", (err as Error).message);
+      flash("Couldn't save this session to Studio. Open Details for why.", true);
+    }
   }
 
   function sendTyped(e: React.FormEvent) {
@@ -415,21 +466,58 @@ export function LiveDemo() {
     const text = typed.trim();
     if (!text || !session.current) return;
     turn.current.gemini = undefined;
-    appendLine("you", `${text} (typed)`);
+    appendLine("you", ` ${text} (typed)`);
     onUserWords(` ${text}`);
     session.current.sendRealtimeInput({ text });
     setTyped("");
   }
 
+  // Starts a fresh board; the last one stays saved in Studio.
   function reset() {
     boardRef.current = emptyBoard;
     pending.current = "";
     filed.current = "";
     unlearned.current = "";
+    studioId.current = undefined;
+    startedAt.current = undefined;
     setBoard(emptyBoard);
     setLog([]);
     setLines([]);
+    if (window.location.search) window.history.replaceState(null, "", "/");
   }
+
+  // "Pick this back up" in Studio opens Home with ?session=<id>: load that
+  // session's tracks and transcript so talking continues where it left off.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("session");
+    if (!id) return;
+    let alive = true;
+    fetch(`/api/studio/${encodeURIComponent(id)}`)
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error ?? `Couldn't open that session (${res.status})`);
+        return body as { id: string; startedAt: string; tracks: { title: string; items: string[] }[]; lines: { who: "you" | "clutter"; text: string }[] };
+      })
+      .then((saved) => {
+        if (!alive) return;
+        let next = 1;
+        const tracks = saved.tracks.map((t) => ({
+          id: `t${next++}`,
+          title: t.title,
+          items: t.items.map((text) => ({ id: `i${next++}`, text })),
+        }));
+        boardRef.current = { tracks, next, active: tracks.at(-1)?.id };
+        filed.current = saved.lines.filter((l) => l.who === "you").map((l) => l.text).join(" ").slice(-1500);
+        studioId.current = saved.id;
+        startedAt.current = saved.startedAt;
+        setBoard(boardRef.current);
+        setLines(saved.lines.map((l) => ({ id: ++seq.current, who: l.who === "you" ? "you" : "gemini", text: l.text })));
+      })
+      .catch((err) => alive && flash((err as Error).message, true));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // While listening, sort new words into tracks every two seconds, so tracks
   // grow while the user is still talking.
@@ -439,12 +527,12 @@ export function LiveDemo() {
     return () => clearInterval(timer);
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mic level ring while listening.
+  // Mic level for the wave while listening.
   useEffect(() => {
     if (status !== "listening") return;
     let raf = 0;
     const tick = () => {
-      setLevel(mic.current?.level() ?? 0);
+      level.current = mic.current?.level() ?? 0;
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -454,124 +542,146 @@ export function LiveDemo() {
   // Close everything if the page is left mid-session.
   useEffect(() => () => stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
+
   const listening = status === "listening";
+  const live = listening || status === "connecting";
+  const phase = live ? (board.tracks.length ? "tracks" : "wave") : board.tracks.length ? "ended" : "idle";
+
+  // While a session runs or its tracks are on screen, the background bubbles
+  // are pulled into the wave (clutter.css watches this attribute).
+  useEffect(() => {
+    if (phase === "idle") delete document.body.dataset.clutterSession;
+    else document.body.dataset.clutterSession = "";
+  }, [phase]);
+  useEffect(() => () => void delete document.body.dataset.clutterSession, []);
+
+  const last = lines.at(-1);
+  const caption =
+    status === "connecting" ? (
+      "Connecting to Clutter..."
+    ) : listening && interim ? (
+      <>
+        <b>You:</b> {interim}
+      </>
+    ) : last ? (
+      <>
+        <b>{last.who === "you" ? "You" : "Clutter"}:</b> {last.text.slice(-220)}
+      </>
+    ) : (
+      "Listening..."
+    );
 
   return (
-    <div className="flex w-full max-w-6xl flex-col gap-6">
-      <section className="flex flex-col items-center gap-3">
+    <div className="c-home" data-phase={phase}>
+      <div className="c-mark">
+        <h1>CLUTTER</h1>
+        <p>Say it messy. Clutter sorts it.</p>
+      </div>
+
+      <div className="c-stage">
+        <Wave level={level} on={live} />
+        <div className="c-under">
+          <p className="c-caption" aria-live="polite">{live && caption}</p>
+          {live && (
+            <div className="c-controls">
+              {listening && (
+                <form onSubmit={sendTyped} className="c-type">
+                  <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Or type a thought" aria-label="Type a thought" />
+                  <button className="c-pill-btn">Send</button>
+                </form>
+              )}
+              <button className="c-pill-btn" onClick={stop}>
+                End session
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="c-tracks">
+        <div className="c-track-grid">
+          {board.tracks.map((t, n) => (
+            <article
+              key={t.id}
+              className={`c-card${live && board.active === t.id ? " active" : ""}`}
+              style={{ "--c": `var(${TRACK_COLORS[n % TRACK_COLORS.length]})` } as React.CSSProperties}
+            >
+              <h3>
+                <i />
+                {t.title}
+              </h3>
+              <ul>
+                {t.items.map((i) => (
+                  <li key={i.id}>{i.text}</li>
+                ))}
+              </ul>
+              <div className="c-card-meta">
+                {t.items.length} thought{t.items.length === 1 ? "" : "s"}
+                {live && board.active === t.id ? " · talking about this now" : ""}
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="c-mic-wrap">
         <button
-          onClick={listening || status === "connecting" ? stop : start}
-          aria-label={listening ? "Stop listening" : "Start talking to Clutter"}
-          className={`flex h-24 w-24 items-center justify-center rounded-full text-white transition ${
-            listening ? "bg-red-600" : status === "connecting" ? "bg-zinc-500" : "bg-blue-600 hover:bg-blue-700"
-          }`}
-          style={{ boxShadow: listening ? `0 0 0 ${4 + level * 28}px rgba(220,38,38,0.25)` : undefined }}
+          className="c-mic"
+          onClick={() => void start()}
+          disabled={live}
+          aria-label={phase === "ended" ? "Keep talking" : "Start talking to Clutter"}
         >
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            {listening ? (
-              <rect x="7" y="7" width="10" height="10" rx="1" fill="currentColor" />
-            ) : (
-              <>
-                <rect x="9" y="3" width="6" height="11" rx="3" />
-                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-              </>
-            )}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <rect x="9" y="3" width="6" height="11" rx="3" />
+            <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" />
           </svg>
         </button>
-        <p className="text-sm text-zinc-500">
-          {status === "idle" && "Tap the mic and think out loud. Clutter sorts what you say into tracks."}
-          {status === "connecting" && "Connecting to Clutter..."}
-          {listening && "Listening..."}
-          {status === "error" && "Something went wrong. See the log below, then try again."}
-        </p>
-        {listening && (
-          <form onSubmit={sendTyped} className="flex w-full max-w-md gap-2">
-            <input
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder="Or type a thought"
-              className="flex-1 rounded-md border border-zinc-300 bg-transparent px-3 py-2 text-sm dark:border-zinc-700"
-            />
-            <button className="rounded-md border border-zinc-300 px-3 text-sm dark:border-zinc-700">Send</button>
-          </form>
-        )}
-      </section>
+        <div className="c-mic-shadow" />
+        <div className="c-mic-hint">{status === "error" ? "Couldn't start. Open Details for why." : "Tap to start a session"}</div>
+      </div>
 
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Tracks</h2>
-          <button onClick={reset} className="text-sm text-zinc-500 underline">
-            Clear
-          </button>
+      <div className={`c-toast${toast ? " show" : ""}${toast?.error ? " error" : ""}`} role="status">
+        {toast?.text}
+      </div>
+
+      {details && (
+        <div className="c-drawer c-panel">
+          <section>
+            <h2>Transcript</h2>
+            <div className="c-transcript">
+              {lines.length === 0 && <p className="c-note">What you say and what Clutter says back shows up here.</p>}
+              {lines.map((l) => (
+                <p key={l.id}>
+                  <b>{l.who === "you" ? "You" : "Clutter"}:</b> {l.text}
+                </p>
+              ))}
+              {listening && interim && <p className="c-note">{interim}</p>}
+            </div>
+          </section>
+          <section>
+            <h2>What Clutter did</h2>
+            <ol>
+              {log.length === 0 && <li className="c-note">Track changes, Clutter&apos;s reasoning and any errors show up here.</li>}
+              {log.map((e) => (
+                <li key={e.id}>
+                  <span className="c-note">{e.at}</span> <span className={`c-log-title ${e.kind}`}>{e.title}</span>
+                  {e.detail && <pre>{e.detail}</pre>}
+                </li>
+              ))}
+            </ol>
+          </section>
         </div>
-        {board.tracks.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
-            No tracks yet. They appear here as Clutter files what you say.
-          </p>
-        ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {board.tracks.map((t) => (
-              <div
-                key={t.id}
-                className={`w-64 shrink-0 rounded-lg border p-3 ${
-                  board.active === t.id ? "border-blue-500 ring-2 ring-blue-500/30" : "border-zinc-300 dark:border-zinc-700"
-                }`}
-              >
-                <div className="mb-2 flex items-baseline justify-between gap-2">
-                  <h3 className="font-medium">{t.title}</h3>
-                  <span className="font-mono text-xs text-zinc-500">{t.id}</span>
-                </div>
-                <ul className="flex flex-col gap-2 text-sm">
-                  {t.items.map((i) => (
-                    <li key={i.id} className="rounded bg-zinc-100 p-2 dark:bg-zinc-900">
-                      {i.text}
-                      <span className="ml-1 font-mono text-xs text-zinc-500">{i.id}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+      )}
+      <div className="c-corner">
+        <button className="c-pill-btn" onClick={() => setDetails((d) => !d)} aria-expanded={details}>
+          {details ? "Hide details" : "Details"}
+          {!details && log.some((e) => e.kind === "error") ? " ⚠︎" : ""}
+        </button>
+        {phase === "ended" && (
+          <button className="c-pill-btn" onClick={reset}>
+            New session
+          </button>
         )}
-      </section>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <section>
-          <h2 className="mb-2 text-lg font-semibold">Transcript</h2>
-          <div className="flex h-80 flex-col gap-2 overflow-y-auto rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700">
-            {lines.length === 0 && <p className="text-zinc-500">What you say and what Clutter says back shows up here.</p>}
-            {lines.map((l) => (
-              <p key={l.id}>
-                <span className={`font-medium ${l.who === "you" ? "text-blue-600" : "text-purple-600"}`}>
-                  {l.who === "you" ? "You" : "Clutter"}:
-                </span>{" "}
-                {l.text}
-              </p>
-            ))}
-            {listening && interim && <p className="italic text-zinc-500">{interim}</p>}
-          </div>
-        </section>
-        <section>
-          <h2 className="mb-2 text-lg font-semibold">Track changes and reasoning</h2>
-          <ol className="flex h-80 flex-col gap-2 overflow-y-auto rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700">
-            {log.length === 0 && <p className="text-zinc-500">Every tool call Clutter makes, and why, shows up here.</p>}
-            {log.map((e) => (
-              <li key={e.id} className="border-b border-zinc-200 pb-2 last:border-0 dark:border-zinc-800">
-                <div className="flex gap-2">
-                  <span className="shrink-0 font-mono text-xs text-zinc-500">{e.at}</span>
-                  <span
-                    className={`break-all font-mono text-xs ${
-                      e.kind === "error" ? "text-red-600" : e.kind === "tool" ? "text-blue-600" : e.kind === "thought" ? "text-purple-600" : ""
-                    }`}
-                  >
-                    {e.title}
-                  </span>
-                </div>
-                {e.detail && <p className="mt-1 whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">{e.detail}</p>}
-              </li>
-            ))}
-          </ol>
-        </section>
       </div>
     </div>
   );

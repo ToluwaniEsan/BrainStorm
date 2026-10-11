@@ -65,19 +65,8 @@
 body { background-color: var(--c-peach); }
 
 /* The background is Alana's lava lamp (globals.css), exactly as she wrote
-   it: her colours, blur and movement. Only the session gather and the
-   Settings switches below are added on top. */
-.lava-lamp {
-  transition: transform 1.6s var(--c-ease);
-  transform-origin: 50% 45%;
-}
-/* While a session runs, the bubbles gather gently toward the wave and swell
-   a little with the voice (--c-level, 0..1, set by the Home page). */
-body[data-clutter-session] .lava-lamp {
-  transform: scale(0.9);
-  scale: calc(1 + var(--c-level, 0) * 0.1);
-  transition: transform 1.6s var(--c-ease), scale 0.2s linear;
-}
+   it: her colours, blur and movement. It stays put while you talk (no
+   shrinking). Only the Settings switches below are added on top. */
 
 /* ---------- floating bar ---------- */
 .c-bar {
@@ -669,7 +658,7 @@ mark.c-hit { background: rgba(255, 198, 144, 0.75); color: inherit; border-radiu
 @media (prefers-reduced-motion: reduce) {
   .c-backdrop::before, .c-bar::before, .lava-lamp__ball, .c-mic::before, .c-mic::after { animation: none; }
   .c-card, .c-card li, ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation-duration: 0.001ms; animation-delay: 0s; }
-  .lava-lamp, .c-mic-wrap, .c-stage, .c-under, .c-mark, .c-toast, .c-bar-pill { transition-duration: 0.001ms; }
+  .c-mic-wrap, .c-stage, .c-under, .c-mark, .c-toast, .c-bar-pill { transition-duration: 0.001ms; }
 }
 
 /* Settings > Look and motion (set by components/prefs.tsx). */

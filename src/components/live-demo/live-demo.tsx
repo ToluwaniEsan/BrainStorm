@@ -165,6 +165,8 @@ export function LiveDemo() {
       }
       if (sc.turnComplete) {
         turn.current = {};
+        // An invite only counts for the turn it was said in.
+        userTail.current = "";
         if (gate.current === "holding") held.current.done = true;
         else if (invitedNext.current && !spokeSinceUser.current && !nudged.current) {
           // They asked, but Live chose to stay silent: ask it once to answer.
@@ -172,7 +174,6 @@ export function LiveDemo() {
         } else {
           gate.current = "idle";
           invitedNext.current = false;
-          if (spokeSinceUser.current) userTail.current = "";
         }
         void sortPending();
       }
@@ -260,7 +261,7 @@ export function LiveDemo() {
     if (wantsReply) {
       if (gate.current === "holding") release();
       else if (!spokeSinceUser.current || gate.current === "muted") nudge();
-      else invitedNext.current = true;
+      // Otherwise Clutter already answered (its reply was heard); nothing more to allow.
     } else if (gate.current === "holding") {
       // Words not yet checked may still hold the request; check them first.
       if (pending.current.trim() && Date.now() >= sortRetryAt.current) void sortPending();

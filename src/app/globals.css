@@ -153,7 +153,7 @@ body {
 
 .lava-lamp__ball--one {
   --ball-gradient: linear-gradient(
-    -45deg,
+    0deg,
     blue,
     orange,
     purple,

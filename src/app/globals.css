@@ -177,15 +177,15 @@ body {
 .lava-lamp__ball--two {
   --ball-gradient: linear-gradient(
     -45deg,
-    darkred,
+    lightblue,
     blue,
     orange,
     magenta,
-    purple,
+    darkred,
     yellow,
     indigo,
-    teal,
-    lightblue
+    purple,
+    teal
   );
   animation-duration: 21s;
   animation-delay: -7s;

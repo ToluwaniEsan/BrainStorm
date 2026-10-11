@@ -449,6 +449,8 @@ textarea.c-input { resize: vertical; }
   font-size: 15px;
   color: var(--c-ink-soft);
 }
+/* Who else the user said is there (guests, judges). */
+.c-people { margin: 4px 0 0; text-align: center; font-size: 12.5px; color: var(--c-ink-soft); }
 .c-caption b { color: var(--c-ink); font-weight: 600; }
 .c-home[data-phase="tracks"] .c-caption { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .c-controls { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 100%; }
@@ -497,6 +499,8 @@ textarea.c-input { resize: vertical; }
 .c-card.active { box-shadow: 0 0 0 2px var(--c), 0 14px 30px -18px rgba(150, 70, 40, 0.45); }
 .c-card h3 { margin: 2px 0 8px; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .c-card h3 i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+/* Where their thinking on the track stands now, kept up to date by Clutter. */
+.c-card .c-summary { margin: 0 0 8px; font-size: 13.5px; line-height: 1.45; color: var(--c-ink); font-style: italic; }
 .c-card ul { margin: 0; padding-left: 18px; list-style: disc; color: var(--c-ink-soft); font-size: 14px; line-height: 1.45; }
 .c-card li { animation: c-fade 0.9s ease both; }
 .c-card-meta { margin-top: 10px; font-size: 12px; color: var(--c-ink-faint); }

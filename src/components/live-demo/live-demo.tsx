@@ -14,7 +14,7 @@ type Line = { id: number; who: "you" | "clutter"; text: string };
 // Fast check for the obvious ways of asking Clutter for a response. Anything
 // subtler ("do you feel me?") is caught by the track sorter's reply_to_user call.
 const INVITE =
-  /\b(what do you think|what'?s your (take|opinion|view)|what is your (take|opinion|view)|any (thoughts|ideas|feedback)|your thoughts|thoughts on (that|this)|what should i|do you think|(do|can) you (feel|see|get) me|you feel me|you know what i mean|does (that|this) make sense|be honest|am i (crazy|wrong|right)|can you (help|tell me|ask me)|help me (think|out)|talk to me|hey (clutter|brainstorm)|over to you)\b/i;
+  /\b(what do you think|what'?s your (take|opinion|view)|what is your (take|opinion|view)|any (thoughts|ideas|feedback)|your thoughts|thoughts on (that|this)|what should i|do you think|(do|can) you (feel|see|get) me|you feel me|you know what i mean|does (that|this) make sense|be honest|am i (crazy|wrong|right)|can you (help|tell me|ask me)|help me (think|out)|talk to me|(hey|hi|hello|okay|ok|yo) (clutter|brainstorm)|over to you|say (hi|hello)|introduce yourself)\b/i;
 
 // While Clutter's reply waits for a verdict on whether the user asked for it.
 const HOLD_MS = 6000;
@@ -268,7 +268,13 @@ export function LiveDemo() {
           text,
           earlier: filed.current.slice(-1500),
           active: b.active,
-          tracks: b.tracks.map((t) => ({ track_id: t.id, title: t.title, items: t.items.map((i) => ({ item_id: i.id, text: i.text })) })),
+          people: b.people ?? [],
+          tracks: b.tracks.map((t) => ({
+            track_id: t.id,
+            title: t.title,
+            summary: t.summary ?? "",
+            items: t.items.map((i) => ({ item_id: i.id, text: i.text })),
+          })),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -286,8 +292,17 @@ export function LiveDemo() {
           continue;
         }
         changed = true;
+        const before = boardRef.current.people ?? [];
         const { board: next, result } = applyTool(boardRef.current, call.name, call.args);
         boardRef.current = next;
+        // Tell the voice model who joined, so it can greet and include them.
+        const joined = (next.people ?? []).filter((p) => !before.includes(p));
+        if (joined.length) {
+          session.current?.sendText(
+            `(Context, no reply needed: ${joined.join(", ")} ${joined.length === 1 ? "is" : "are"} here with me now. Keep them in mind and include them when you next speak.)`,
+            false,
+          );
+        }
         addLog(
           result.ok ? "tool" : "error",
           `${call.name}(${Object.entries(rest).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ")})`,
@@ -357,7 +372,7 @@ export function LiveDemo() {
     if (sofar.length) {
       sess.sendText(
         `(Context, no reply needed: we're picking up an earlier discussion. These are the tracks so far, in my own words. Don't read them back; just keep them in mind.)\n${sofar
-          .map((t) => `\n=== ${t.title} ===\n${t.items.map((i) => `- ${i.text}`).join("\n")}`)
+          .map((t) => `\n=== ${t.title} ===\n${t.summary ? `Summary: ${t.summary}\n` : ""}${t.items.map((i) => `- ${i.text}`).join("\n")}`)
           .join("\n")}`.slice(0, 8000),
         false,
       );
@@ -596,6 +611,7 @@ export function LiveDemo() {
         <Wave level={level} on={live} compact={phase === "tracks" || phase === "ended"} />
         <div className="c-under">
           <p className="c-caption" aria-live="polite">{live && caption}</p>
+          {live && !!board.people?.length && <p className="c-people">With you: {board.people.join(", ")}</p>}
           {live && (
             <div className="c-controls">
               {listening && (
@@ -624,6 +640,7 @@ export function LiveDemo() {
                 <i />
                 {t.title}
               </h3>
+              {t.summary && <p className="c-summary">{t.summary}</p>}
               <ul>
                 {t.items.map((i) => (
                   <li key={i.id}>{i.text}</li>

@@ -157,7 +157,7 @@ body {
   aspect-ratio: 1;
   border-radius: 50%;
   box-shadow: inset 0px 0px 10px rgba(0, 0, 0, 0.325);
-  background: linear-gradient(-45deg,
+  background: radial-gradient(circle at 50% 50%,
       blue,
       orange,
       purple,
@@ -176,15 +176,6 @@ body {
   animation:
     gradientMovement 25s ease-in infinite,
     bubbleBounceOne 32s ease-in-out infinite;
-}
-
-.lava-lamp__ball::after{
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  box-shadow: inset 0px 0px 10px rgba(0, 0, 0, 0.325);
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
 }
 
 .lava-lamp__ball--one {

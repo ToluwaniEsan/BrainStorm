@@ -11,15 +11,18 @@
 
 @keyframes gradientMovement {
   0% {
-    background-position: 0% 50%;
+    background-position: 50% 50%;
+    background-size: 100% 100%;
   }
 
   50% {
-    background-position: 100% 50%;
+    background-position: 50% 50%;
+    background-size: 200% 200%;
   }
 
   100% {
-    background-position: 0% 50%;
+    background-position: 50% 50%;
+    background-size: 300% 300%;
   }
 }
 
@@ -167,8 +170,7 @@ body {
       lightblue,
       yellow,
       darkred);
-  
-  background-size: 300% 300%;
+
   filter: blur(10px);
   opacity: 0.60;
   -webkit-animation-delay: 5s;

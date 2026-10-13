@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist, Geist_Mono, Unbounded } from "next/font/google";
-import "./globals.css";
-import "./clutter.css";
+import "./background_UI.css";
+import "./main_UI.css";
 
 import { Nav } from "@/components/nav";
 import { ApplyPrefs } from "@/components/prefs";

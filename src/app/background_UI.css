@@ -160,7 +160,7 @@ body {
   aspect-ratio: 1;
   border-radius: 50%;
   box-shadow: inset 0px 0px 10px rgba(0, 0, 0, 0.325);
-  background: radial-gradient(circle at 50% 50%,
+  background: radial-gradient(circle at center,
       blue,
       orange,
       purple,

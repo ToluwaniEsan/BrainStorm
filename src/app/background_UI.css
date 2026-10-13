@@ -178,7 +178,7 @@ body {
     bubbleBounceOne 32s ease-in-out infinite;
 }
 
-.lava-lamp_ball::after{
+.lava-lamp__ball::after{
   content: "";
   position: absolute;
   inset: 0;

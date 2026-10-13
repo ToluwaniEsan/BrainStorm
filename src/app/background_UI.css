@@ -138,6 +138,21 @@
   }
 }
 
+@property --ball-hue {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes changeBallHue {
+  to { --ball-hue: 360deg; }
+}
+
+@keyframes radiate {
+  0%, 100% { background-size: 100% 100%; }
+  50%      { background-size: 300% 300%; }
+}
+
 body {
   isolation: isolate;
   background-color: #ffcfac;
@@ -160,21 +175,18 @@ body {
   aspect-ratio: 1;
   border-radius: 50%;
   box-shadow: inset 0px 0px 10px rgba(0, 0, 0, 0.325);
-  background: radial-gradient(circle at center,
-      blue,
-      orange,
-      purple,
-      indigo,
-      magenta,
-      teal,
-      lightblue,
-      yellow,
-      darkred);
-
+   --ball-hue: 0deg;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    hsl(var(--ball-hue) 100% 50%),
+    hsl(calc(var(--ball-hue) + 45deg) 100% 50%)
+  );
+  background-position: 50% 50%;
   filter: blur(10px);
   opacity: 0.60;
   animation:
-    gradientMovement 25s linear infinite,
+    changeBallHue 16s steps(8, end) infinite,
+    radiate 4s ease-in-out infinite,
     bubbleBounceOne 32s ease-in-out infinite;
 }
 

@@ -167,10 +167,13 @@ body {
       lightblue,
       yellow,
       darkred);
+  
   background-size: 300% 300%;
   filter: blur(10px);
   opacity: 0.60;
   -webkit-animation-delay: 5s;
+  animation-delay: 5s;
+  animation-direction: reverse;
   animation:
     gradientMovement 25s ease-in infinite,
     bubbleBounceOne 32s ease-in-out infinite;

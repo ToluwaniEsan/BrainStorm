@@ -1,236 +1,240 @@
 @import "tailwindcss";
 
 :root {
---background: #ffcfac;
---foreground: #171717;
---color-background: var(--background);
---color-foreground: var(--foreground);
---font-sans: var(--font-geist-sans);
---font-mono: var(--font-geist-mono);
+  --background: #ffcfac;
+  --foreground: #171717;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
-
-/*
-  Alana's lava lamp background. It was switched off on 2026-10-11 for a
-  trial background, and switched back on the same day at the user's request.
-  It runs exactly as written below.
-*/
 
 @keyframes gradientMovement {
-0% {
-background-position: 0% 50%;
-}
-50% {
-background-position: 100% 50%;
-}
-100% {
-background-position: 0% 50%;
-}
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 @keyframes bubbleBounceOne {
-0%,
-100% {
-transform: translate3d(0, 0, 0);
-}
-35% {
-transform: translate3d(25vw, 15vh, 0);
-}
-70% {
-transform: translate3d(12vw, 42vh, 0);
-}
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  35% {
+    transform: translate3d(25vw, 15vh, 0);
+  }
+
+  70% {
+    transform: translate3d(12vw, 42vh, 0);
+  }
 }
 
 @keyframes bubbleBounceTwo {
-0%,
-100% {
-transform: translate3d(0, 0, 0);
-}
-30% {
-transform: translate3d(-22vw, 25vh, 0);
-}
-65% {
-transform: translate3d(-38vw, 8vh, 0);
-}
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  30% {
+    transform: translate3d(-22vw, 25vh, 0);
+  }
+
+  65% {
+    transform: translate3d(-38vw, 8vh, 0);
+  }
 }
 
 @keyframes bubbleBounceThree {
-0%,
-100% {
-transform: translate3d(0, 0, 0);
-}
-40% {
-transform: translate3d(18vw, -25vh, 0);
-}
-75% {
-transform: translate3d(38vw, 12vh, 0);
-}
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  40% {
+    transform: translate3d(18vw, -25vh, 0);
+  }
+
+  75% {
+    transform: translate3d(38vw, 12vh, 0);
+  }
 }
 
 @keyframes bubbleBounceFour {
-0%,
-100% {
-transform: translate3d(0, 0, 0);
-}
-35% {
-transform: translate3d(-28vw, -20vh, 0);
-}
-70% {
-transform: translate3d(-12vw, -40vh, 0);
-}
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  35% {
+    transform: translate3d(-28vw, -20vh, 0);
+  }
+
+  70% {
+    transform: translate3d(-12vw, -40vh, 0);
+  }
 }
 
 @keyframes bubbleBounceFive {
-0%,
-100% {
-transform: translate3d(0, 0, 0);
-}
-30% {
-transform: translate3d(-35vw, 18vh, 0);
-}
-65% {
-transform: translate3d(-18vw, -28vh, 0);
-}
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  30% {
+    transform: translate3d(-35vw, 18vh, 0);
+  }
+
+  65% {
+    transform: translate3d(-18vw, -28vh, 0);
+  }
 }
 
 @keyframes bubbleBounceSix {
-0%,
-100% {
-transform: translate3d(0, 0, 0);
-}
-45% {
-transform: translate3d(18vw, -25vh, 0);
-}
-80% {
-transform: translate3d(38vw, 12vh, 0);
-}
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  45% {
+    transform: translate3d(18vw, -25vh, 0);
+  }
+
+  80% {
+    transform: translate3d(38vw, 12vh, 0);
+  }
 }
 
 @keyframes bubbleBounceSeven {
-0%,
-100% {
-transform: translate3d(0, 0, 0);
-}
-35% {
-transform: translate3d(-28vw, -20vh, 0);
-}
-70% {
-transform: translate3d(12vw, 42vh, 0);
-}
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  35% {
+    transform: translate3d(-28vw, -20vh, 0);
+  }
+
+  70% {
+    transform: translate3d(12vw, 42vh, 0);
+  }
 }
 
 body {
-isolation: isolate;
-background-color: #ffcfac;
+  isolation: isolate;
+  background-color: #ffcfac;
 }
 
 .lava-lamp {
-position: fixed;
-z-index: 0;
-inset: 0 0 auto;
-height: 100vh;
-height: 100dvh;
-overflow: hidden;
-pointer-events: none;
+  position: fixed;
+  z-index: 0;
+  inset: 0 0 auto;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .lava-lamp__ball {
-position: absolute;
-display: block;
-width: clamp(9rem, 24vw, 22rem);
-aspect-ratio: 1;
-border-radius: 50%;
-background: linear-gradient(
--45deg,
-blue,
-orange,
-purple,
-indigo,
-magenta,
-teal,
-lightblue,
-yellow,
-darkred
-);
-background-size: 300% 300%;
-filter: blur(10px);
-opacity: 0.65;
-animation:
-gradientMovement 25s ease-in infinite,
-bubbleBounceOne 32s ease-in-out infinite;
+  position: absolute;
+  display: block;
+  width: clamp(9rem, 24vw, 22rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: linear-gradient(-45deg,
+      blue,
+      orange,
+      purple,
+      indigo,
+      magenta,
+      teal,
+      lightblue,
+      yellow,
+      darkred);
+  background-size: 300% 300%;
+  filter: blur(10px);
+  opacity: 0.65;
+  animation:
+    gradientMovement 25s ease-in infinite,
+    bubbleBounceOne 32s ease-in-out infinite;
 }
 
 .lava-lamp__ball--one {
-top: 4%;
-left: 2%;
+  top: 4%;
+  left: 2%;
 }
 
 .lava-lamp__ball--two {
-top: 5%;
-left: 58%;
-animation-name: gradientMovement, bubbleBounceTwo;
-animation-duration: 25s, 38s;
+  top: 5%;
+  left: 58%;
+  animation-name: gradientMovement, bubbleBounceTwo;
+  animation-duration: 25s, 38s;
 }
 
 .lava-lamp__ball--three {
-top: 43%;
-left: 24%;
-animation-name: gradientMovement, bubbleBounceThree;
-animation-duration: 25s, 35s;
+  top: 43%;
+  left: 24%;
+  animation-name: gradientMovement, bubbleBounceThree;
+  animation-duration: 25s, 35s;
 }
 
 .lava-lamp__ball--four {
-top: 58%;
-left: 72%;
-animation-name: gradientMovement, bubbleBounceFour;
-animation-duration: 25s, 41s;
+  top: 58%;
+  left: 72%;
+  animation-name: gradientMovement, bubbleBounceFour;
+  animation-duration: 25s, 41s;
 }
 
 .lava-lamp__ball--five {
-top: 72%;
-left: 6%;
-animation-name: gradientMovement, bubbleBounceFive;
-animation-duration: 25s, 37s;
+  top: 72%;
+  left: 6%;
+  animation-name: gradientMovement, bubbleBounceFive;
+  animation-duration: 25s, 37s;
 }
 
 .lava-lamp__ball--six {
-top: 20%;
-left: 40%;
-animation-name: gradientMovement, bubbleBounceSix;
-animation-duration: 25s, 39s;
+  top: 20%;
+  left: 40%;
+  animation-name: gradientMovement, bubbleBounceSix;
+  animation-duration: 25s, 39s;
 }
 
 .lava-lamp__ball--seven {
-top: 80%;
-left: 80%;
-animation-name: gradientMovement, bubbleBounceSeven;
-animation-duration: 25s, 36s;
+  top: 80%;
+  left: 80%;
+  animation-name: gradientMovement, bubbleBounceSeven;
+  animation-duration: 25s, 36s;
 }
 
 @media (max-width: 760px) {
-.lava-lamp__ball {
-width: clamp(7rem, 24vw, 15rem);
-}
+  .lava-lamp__ball {
+    width: clamp(7rem, 24vw, 15rem);
+  }
 }
 
 @media (max-height: 560px) {
-.lava-lamp__ball {
-width: clamp(7rem, 24vh, 13rem);
+  .lava-lamp__ball {
+    width: clamp(7rem, 24vh, 13rem);
+  }
 }
-}
-
-/* Her page text rule stays off: it turned all page text red Arial, and the
-   Clutter pages set their own type. .c-shell keeps content above the bubbles.
-main {
-position: relative;
-z-index: 1;
-background-color: transparent;
-color: rgb(191, 18, 18);
-font-family: Arial, Helvetica, sans-serif;
-}
-*/
 
 @media (prefers-reduced-motion: reduce) {
-.lava-lamp__ball {
-animation: none;
-}
+  .lava-lamp__ball {
+    animation: none;
+  }
 }

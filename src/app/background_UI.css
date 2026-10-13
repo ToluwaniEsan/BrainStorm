@@ -178,6 +178,15 @@ body {
     bubbleBounceOne 32s ease-in-out infinite;
 }
 
+.lava-lamp_ball::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0px 0px 10px rgba(0, 0, 0, 0.325);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+}
+
 .lava-lamp__ball--one {
   top: 4%;
   left: 2%;

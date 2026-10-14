@@ -216,8 +216,7 @@ body {
   opacity: 0.60;
   animation:
     changeBallHue 16s steps(8, end) infinite,
-    radiate 25s ease-in-out infinite,
-    bubbleBounceOne 32s ease-in-out infinite;
+    gradientMovement 25s ease-in-out infinite,
 }
 
 .lava-lamp__ball--one {

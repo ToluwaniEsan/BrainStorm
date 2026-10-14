@@ -26,6 +26,36 @@
   }
 }
 
+@keyframes ballOneColorPair {
+  0% {
+    --inner-color: blue;
+    --outer-color: orange;
+    animation-timing-function: steps(1, end);
+  }
+
+  33.333% {
+    --inner-color: orange;
+    --outer-color: purple;
+    animation-timing-function: steps(1, end);
+  }
+
+  66.666% {
+    --inner-color: purple;
+    --outer-color: teal;
+    animation-timing-function: steps(1, end);
+  }
+
+  100% {
+    --inner-color: blue;
+    --outer-color: orange;
+  }
+}
+
+@keyframes gradientPulse {
+  0%, 100% { background-size: 100% 100%; }
+  50%      { background-size: 300% 300%; }
+}
+
 @keyframes bubbleBounceOne {
 
   0%,
@@ -193,6 +223,19 @@ body {
 .lava-lamp__ball--one {
   top: 4%;
   left: 2%;
+  --inner-color: blue;
+  --outer-color: orange;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    var(--inner-color) 0%,
+    var(--outer-color) 70%,
+    transparent 100%
+  );
+  background-position: 50% 50%;
+  animation:
+    ballOneColorPair 18s infinite,
+    gradientPulse 4s ease-in-out infinite,
+    bubbleBounceOne 32s ease-in-out infinite;
 }
 
 .lava-lamp__ball--two {
